@@ -5,7 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const DEV_HOST = Platform.OS === 'android' ? '10.0.2.2' : 'localhost';
 const BASE_URL = __DEV__
   ? `http://${DEV_HOST}:3333`
-  : 'https://sua-api-producao.vercel.app'; // trocar pela URL de produção
+  : 'https://nexo-back-end.vercel.app'; // trocar pela URL de produção
 
 const TOKEN_KEY = 'finance-tokens';
 

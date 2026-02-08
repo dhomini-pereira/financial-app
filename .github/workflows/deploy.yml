@@ -13,9 +13,9 @@ jobs:
         working-directory: back-end
 
       - name: Pull Vercel Environment Information
-        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }} --project nexo-back-end --confirm
         working-directory: back-end
 
-      - name: Deploy Project Artifacts to Vercel
-        run: vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Deploy Project Artifacts
+        run: vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }} --project nexo-back-end
         working-directory: back-end
