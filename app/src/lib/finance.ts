@@ -1,0 +1,27 @@
+export const formatCurrency = (value: number): string =>
+  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+
+export const formatDate = (date: string): string =>
+  new Date(date).toLocaleDateString('pt-BR');
+
+export const formatDateShort = (date: string): string =>
+  new Date(date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+
+export const maskValue = (privacy: boolean, text: string): string =>
+  privacy ? '•••••' : text;
+
+export const generateId = (): string =>
+  Math.random().toString(36).substring(2, 10);
+
+export const getMonthDates = () => {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), 1);
+  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  return { start: start.toISOString().split('T')[0], end: end.toISOString().split('T')[0] };
+};
+
+export const daysAgo = (n: number): string => {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return d.toISOString().split('T')[0];
+};

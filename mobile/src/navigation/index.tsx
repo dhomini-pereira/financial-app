@@ -1,0 +1,277 @@
+import React, { useEffect, useRef, useState } from 'react';
+import { AppState, AppStateStatus, View, TouchableOpacity, Text, StyleSheet as NavStyles } from 'react-native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import PagerView from 'react-native-pager-view';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '@/theme/ThemeProvider';
+import { useAuthStore } from '@/store/useAuthStore';
+import { useFinanceStore } from '@/store/useFinanceStore';
+
+import LoginScreen from '@/screens/LoginScreen';
+import BiometricLockScreen from '@/screens/BiometricLockScreen';
+import DashboardScreen from '@/screens/DashboardScreen';
+import TransactionsScreen from '@/screens/TransactionsScreen';
+import AccountsScreen from '@/screens/AccountsScreen';
+import MoreScreen from '@/screens/MoreScreen';
+import ManageAccountsScreen from '@/screens/ManageAccountsScreen';
+import ManageGoalsScreen from '@/screens/ManageGoalsScreen';
+import ManageCategoriesScreen from '@/screens/ManageCategoriesScreen';
+import ManageInvestmentsScreen from '@/screens/ManageInvestmentsScreen';
+import ProfileScreen from '@/screens/ProfileScreen';
+import TransactionFormScreen from '@/screens/TransactionFormScreen';
+import TransferScreen from '@/screens/TransferScreen';
+
+export type RootStackParamList = {
+  Login: undefined;
+  BiometricLock: undefined;
+  Main: undefined;
+  ManageAccounts: undefined;
+  ManageGoals: undefined;
+  ManageCategories: undefined;
+  ManageInvestments: undefined;
+  Profile: undefined;
+  TransactionForm: { transactionId?: string } | undefined;
+  Transfer: undefined;
+};
+
+export type TabParamList = {
+  Dashboard: undefined;
+  Transactions: undefined;
+  Accounts: undefined;
+  More: undefined;
+};
+
+const Stack = createNativeStackNavigator<RootStackParamList>();
+
+const tabs = [
+  { key: 'Dashboard', label: 'Início', icon: 'grid-outline' as const },
+  { key: 'Transactions', label: 'Transações', icon: 'swap-horizontal-outline' as const },
+  { key: 'Accounts', label: 'Contas', icon: 'wallet-outline' as const },
+  { key: 'More', label: 'Mais', icon: 'menu-outline' as const },
+];
+
+const tabScreens = [DashboardScreen, TransactionsScreen, AccountsScreen, MoreScreen];
+
+const TabNavigator = () => {
+  const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+  const pagerRef = useRef<PagerView>(null);
+  const [activeTab, setActiveTab] = useState(0);
+
+  const onPageSelected = (e: any) => {
+    setActiveTab(e.nativeEvent.position);
+  };
+
+  const goToPage = (index: number) => {
+    pagerRef.current?.setPage(index);
+    setActiveTab(index);
+  };
+
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <PagerView
+        ref={pagerRef}
+        style={{ flex: 1 }}
+        initialPage={0}
+        onPageSelected={onPageSelected}
+      >
+        {tabScreens.map((Screen, index) => (
+          <View key={tabs[index].key} style={{ flex: 1 }}>
+            <Screen />
+          </View>
+        ))}
+      </PagerView>
+
+      {/* Custom Tab Bar */}
+      <View
+        style={[
+          tabBarStyles.container,
+          {
+            backgroundColor: colors.tabBarBg,
+            borderTopColor: colors.tabBarBorder,
+            paddingBottom: Math.max(insets.bottom, 8),
+          },
+        ]}
+      >
+        {tabs.map((tab, index) => {
+          const isActive = activeTab === index;
+          return (
+            <TouchableOpacity
+              key={tab.key}
+              onPress={() => goToPage(index)}
+              style={tabBarStyles.tab}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name={tab.icon as any}
+                size={22}
+                color={isActive ? colors.primary : colors.textMuted}
+              />
+              <Text
+                style={[
+                  tabBarStyles.label,
+                  { color: isActive ? colors.primary : colors.textMuted },
+                  isActive && tabBarStyles.labelActive,
+                ]}
+              >
+                {tab.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+};
+
+const tabBarStyles = NavStyles.create({
+  container: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    paddingTop: 4,
+  },
+  tab: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 4,
+  },
+  label: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  labelActive: {
+    fontWeight: '600',
+  },
+});
+
+const AppNavigation = () => {
+  const { colors, dark } = useTheme();
+  const { isAuthenticated, biometricEnabled, biometricLocked, checkSession, lockApp, restoreSession } = useAuthStore();
+  const { fetchAll, reset } = useFinanceStore();
+
+  // Ao montar, tenta restaurar sessão do token salvo
+  useEffect(() => {
+    restoreSession();
+  }, []);
+
+  // Ao montar, verifica se a sessão é válida (30 dias)
+  useEffect(() => {
+    checkSession();
+  }, []);
+
+  // Quando autenticado, carrega todos os dados financeiros
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchAll();
+    } else {
+      reset();
+    }
+  }, [isAuthenticated]);
+
+  // Quando o app volta do background, bloqueia se biometria está ativada
+  useEffect(() => {
+    const handleAppState = (nextState: AppStateStatus) => {
+      if (nextState === 'active') {
+        // Ao voltar para foreground verifica sessão e (re)trava se tiver biometria
+        const valid = checkSession();
+        if (!valid) return; // session expirou, vai pro login
+      } else if (nextState === 'background' || nextState === 'inactive') {
+        lockApp();
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppState);
+    return () => subscription.remove();
+  }, []);
+
+  const navTheme = {
+    ...(dark ? DarkTheme : DefaultTheme),
+    colors: {
+      ...(dark ? DarkTheme : DefaultTheme).colors,
+      primary: colors.primary,
+      background: colors.background,
+      card: colors.surface,
+      text: colors.text,
+      border: colors.surfaceBorder,
+    },
+  };
+
+  // Decide qual stack mostrar
+  const showBiometricLock = isAuthenticated && biometricEnabled && biometricLocked;
+  const showLogin = !isAuthenticated;
+
+  return (
+    <NavigationContainer theme={navTheme}>
+      <Stack.Navigator
+        screenOptions={{
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.text,
+          headerShadowVisible: false,
+          contentStyle: { backgroundColor: colors.background },
+        }}
+      >
+        {showLogin ? (
+          <Stack.Screen
+            name="Login"
+            component={LoginScreen}
+            options={{ headerShown: false }}
+          />
+        ) : showBiometricLock ? (
+          <Stack.Screen
+            name="BiometricLock"
+            component={BiometricLockScreen}
+            options={{ headerShown: false }}
+          />
+        ) : (
+          <>
+            <Stack.Screen
+              name="Main"
+              component={TabNavigator}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="ManageAccounts"
+              component={ManageAccountsScreen}
+              options={{ title: 'Gerenciar Contas' }}
+            />
+            <Stack.Screen
+              name="ManageGoals"
+              component={ManageGoalsScreen}
+              options={{ title: 'Gerenciar Metas' }}
+            />
+            <Stack.Screen
+              name="ManageCategories"
+              component={ManageCategoriesScreen}
+              options={{ title: 'Gerenciar Categorias' }}
+            />
+            <Stack.Screen
+              name="ManageInvestments"
+              component={ManageInvestmentsScreen}
+              options={{ title: 'Gerenciar Investimentos' }}
+            />
+            <Stack.Screen
+              name="Profile"
+              component={ProfileScreen}
+              options={{ title: 'Perfil' }}
+            />
+            <Stack.Screen
+              name="TransactionForm"
+              component={TransactionFormScreen}
+              options={{ title: 'Nova Transação', presentation: 'modal' }}
+            />
+            <Stack.Screen
+              name="Transfer"
+              component={TransferScreen}
+              options={{ title: 'Transferência', presentation: 'modal' }}
+            />
+          </>
+        )}
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+};
+
+export default AppNavigation;

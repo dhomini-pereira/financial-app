@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "FinançasPro",
+    "slug": "financas-pro",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "backgroundColor": "#0f172a",
+      "resizeMode": "contain"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.financaspro.app",
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "Permite acesso rápido ao app com Face ID"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0f172a"
+      },
+      "package": "com.financaspro.app"
+    },
+    "plugins": [
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Permite acesso rápido ao app com Face ID"
+        }
+      ]
+    ]
+  }
+}
