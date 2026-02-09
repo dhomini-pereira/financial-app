@@ -22,6 +22,7 @@ interface FinanceState {
   investments: Investment[];
   goals: Goal[];
   loading: boolean;
+  actionLoading: boolean; // loading para ações individuais (add/edit/delete)
   error: string | null;
 
   // Fetch all from API
@@ -63,6 +64,7 @@ const initialState = {
   investments: [] as Investment[],
   goals: [] as Goal[],
   loading: false,
+  actionLoading: false,
   error: null as string | null,
 };
 
@@ -90,91 +92,107 @@ export const useFinanceStore = create<FinanceState>()((set, get) => ({
   // ========== ACCOUNTS ==========
   addAccount: async (data) => {
     try {
+      set({ actionLoading: true });
       const account = await accountsApi.create(data as any);
-      set({ accounts: [...get().accounts, account] });
+      set({ accounts: [...get().accounts, account], actionLoading: false });
     } catch (err: any) {
-      set({ error: err.message });
+      set({ error: err.message, actionLoading: false });
+      throw err;
     }
   },
 
   updateAccount: async (id, data) => {
     try {
+      set({ actionLoading: true });
       const updated = await accountsApi.update(id, data);
-      set({ accounts: get().accounts.map((a) => (a.id === id ? updated : a)) });
+      set({ accounts: get().accounts.map((a) => (a.id === id ? updated : a)), actionLoading: false });
     } catch (err: any) {
-      set({ error: err.message });
+      set({ error: err.message, actionLoading: false });
+      throw err;
     }
   },
 
   deleteAccount: async (id) => {
     try {
+      set({ actionLoading: true });
       await accountsApi.delete(id);
-      set({ accounts: get().accounts.filter((a) => a.id !== id) });
+      set({ accounts: get().accounts.filter((a) => a.id !== id), actionLoading: false });
     } catch (err: any) {
-      set({ error: err.message });
+      set({ error: err.message, actionLoading: false });
+      throw err;
     }
   },
 
   // ========== TRANSACTIONS ==========
   addTransaction: async (data) => {
     try {
+      set({ actionLoading: true });
       const tx = await transactionsApi.create(data);
-      set({ transactions: [...get().transactions, tx] });
+      set({ transactions: [...get().transactions, tx], actionLoading: false });
       // Atualiza o saldo da conta localmente (o back-end já fez o cálculo)
       await get().fetchAll();
     } catch (err: any) {
-      set({ error: err.message });
+      set({ error: err.message, actionLoading: false });
       throw err;
     }
   },
 
   deleteTransaction: async (id) => {
     try {
+      set({ actionLoading: true });
       await transactionsApi.delete(id);
-      set({ transactions: get().transactions.filter((t) => t.id !== id) });
+      set({ transactions: get().transactions.filter((t) => t.id !== id), actionLoading: false });
       // Atualiza saldos
       await get().fetchAll();
     } catch (err: any) {
-      set({ error: err.message });
+      set({ error: err.message, actionLoading: false });
+      throw err;
     }
   },
 
   // ========== TRANSFER ==========
   transfer: async (fromId, toId, amount, description) => {
     try {
+      set({ actionLoading: true });
       await transfersApi.create({ fromAccountId: fromId, toAccountId: toId, amount, description });
-      // Recarrega tudo (contas e transações mudam)
+      set({ actionLoading: false });
       await get().fetchAll();
     } catch (err: any) {
-      set({ error: err.message });
+      set({ error: err.message, actionLoading: false });
+      throw err;
     }
   },
 
   // ========== CATEGORIES ==========
   addCategory: async (data) => {
     try {
+      set({ actionLoading: true });
       const cat = await categoriesApi.create(data as any);
-      set({ categories: [...get().categories, cat] });
+      set({ categories: [...get().categories, cat], actionLoading: false });
     } catch (err: any) {
-      set({ error: err.message });
+      set({ error: err.message, actionLoading: false });
+      throw err;
     }
   },
 
   updateCategory: async (id, data) => {
     try {
+      set({ actionLoading: true });
       const updated = await categoriesApi.update(id, data);
-      set({ categories: get().categories.map((c) => (c.id === id ? updated : c)) });
+      set({ categories: get().categories.map((c) => (c.id === id ? updated : c)), actionLoading: false });
     } catch (err: any) {
-      set({ error: err.message });
+      set({ error: err.message, actionLoading: false });
+      throw err;
     }
   },
 
   deleteCategory: async (id) => {
     try {
+      set({ actionLoading: true });
       await categoriesApi.delete(id);
-      set({ categories: get().categories.filter((c) => c.id !== id) });
+      set({ categories: get().categories.filter((c) => c.id !== id), actionLoading: false });
     } catch (err: any) {
-      set({ error: err.message });
+      set({ error: err.message, actionLoading: false });
       throw err;
     }
   },
@@ -182,56 +200,68 @@ export const useFinanceStore = create<FinanceState>()((set, get) => ({
   // ========== INVESTMENTS ==========
   addInvestment: async (data) => {
     try {
+      set({ actionLoading: true });
       const inv = await investmentsApi.create(data);
-      set({ investments: [...get().investments, inv] });
+      set({ investments: [...get().investments, inv], actionLoading: false });
     } catch (err: any) {
-      set({ error: err.message });
+      set({ error: err.message, actionLoading: false });
+      throw err;
     }
   },
 
   updateInvestment: async (id, data) => {
     try {
+      set({ actionLoading: true });
       const updated = await investmentsApi.update(id, data);
-      set({ investments: get().investments.map((i) => (i.id === id ? updated : i)) });
+      set({ investments: get().investments.map((i) => (i.id === id ? updated : i)), actionLoading: false });
     } catch (err: any) {
-      set({ error: err.message });
+      set({ error: err.message, actionLoading: false });
+      throw err;
     }
   },
 
   deleteInvestment: async (id) => {
     try {
+      set({ actionLoading: true });
       await investmentsApi.delete(id);
-      set({ investments: get().investments.filter((i) => i.id !== id) });
+      set({ investments: get().investments.filter((i) => i.id !== id), actionLoading: false });
     } catch (err: any) {
-      set({ error: err.message });
+      set({ error: err.message, actionLoading: false });
+      throw err;
     }
   },
 
   // ========== GOALS ==========
   addGoal: async (data) => {
     try {
+      set({ actionLoading: true });
       const goal = await goalsApi.create(data);
-      set({ goals: [...get().goals, goal] });
+      set({ goals: [...get().goals, goal], actionLoading: false });
     } catch (err: any) {
-      set({ error: err.message });
+      set({ error: err.message, actionLoading: false });
+      throw err;
     }
   },
 
   updateGoal: async (id, data) => {
     try {
+      set({ actionLoading: true });
       const updated = await goalsApi.update(id, data);
-      set({ goals: get().goals.map((g) => (g.id === id ? updated : g)) });
+      set({ goals: get().goals.map((g) => (g.id === id ? updated : g)), actionLoading: false });
     } catch (err: any) {
-      set({ error: err.message });
+      set({ error: err.message, actionLoading: false });
+      throw err;
     }
   },
 
   deleteGoal: async (id) => {
     try {
+      set({ actionLoading: true });
       await goalsApi.delete(id);
-      set({ goals: get().goals.filter((g) => g.id !== id) });
+      set({ goals: get().goals.filter((g) => g.id !== id), actionLoading: false });
     } catch (err: any) {
-      set({ error: err.message });
+      set({ error: err.message, actionLoading: false });
+      throw err;
     }
   },
 }));

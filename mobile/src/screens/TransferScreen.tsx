@@ -5,6 +5,8 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,7 +15,19 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { useFinanceStore } from '@/store/useFinanceStore';
 import { formatCurrency } from '@/lib/finance';
 import InputField from '@/components/InputField';
-import StatCard from '@/components/StatCard';
+
+/** Aceita "1.500,50" ou "1500.50" ou "1500,50" */
+const parseAmount = (raw: string): number => {
+  const s = raw.trim();
+  if (!s) return 0;
+  if (s.includes(',') && s.includes('.')) {
+    return parseFloat(s.replace(/\./g, '').replace(',', '.')) || 0;
+  }
+  if (s.includes(',')) {
+    return parseFloat(s.replace(',', '.')) || 0;
+  }
+  return parseFloat(s) || 0;
+};
 
 const TransferScreen = () => {
   const { colors } = useTheme();
@@ -23,65 +37,132 @@ const TransferScreen = () => {
   const [fromId, setFromId] = useState('');
   const [toId, setToId] = useState('');
   const [amount, setAmount] = useState('');
+  const [description, setDescription] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const fromAccount = accounts.find((a) => a.id === fromId);
+  const toAccount = accounts.find((a) => a.id === toId);
+  const parsedAmount = parseAmount(amount);
+
+  const canSubmit = !!fromId && !!toId && fromId !== toId && parsedAmount > 0 && !loading;
+
+  const handleSelectFrom = (id: string) => {
+    setFromId(id);
+    // Limpa destino se for a mesma conta
+    if (toId === id) setToId('');
+  };
 
   const handleTransfer = async () => {
-    const val = parseFloat(amount);
-    if (!fromId || !toId || !val || fromId === toId) return;
-    await transfer(fromId, toId, val);
-    navigation.goBack();
+    if (!canSubmit) return;
+
+    if (fromAccount && parsedAmount > fromAccount.balance) {
+      Alert.alert('Saldo insuficiente', `A conta "${fromAccount.name}" tem saldo de ${formatCurrency(fromAccount.balance)}.`);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await transfer(fromId, toId, parsedAmount, description || undefined);
+      Alert.alert('Sucesso', 'Transferência realizada com sucesso!', [
+        { text: 'OK', onPress: () => navigation.goBack() },
+      ]);
+    } catch (err: any) {
+      Alert.alert('Erro', err.message || 'Falha ao realizar transferência.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={[]}>
-      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Conta de origem */}
         <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>De</Text>
         <View style={styles.accountList}>
-          {accounts.map((acc) => (
-            <TouchableOpacity
-              key={acc.id}
-              onPress={() => setFromId(acc.id)}
-              style={[
-                styles.accountChip,
-                {
-                  backgroundColor: fromId === acc.id ? colors.primary : colors.mutedBg,
-                  borderColor: fromId === acc.id ? colors.primary : colors.surfaceBorder,
-                },
-              ]}
-            >
-              <Text style={[styles.accountName, { color: fromId === acc.id ? '#fff' : colors.text }]}>
-                {acc.name}
-              </Text>
-              <Text style={[styles.accountBalance, { color: fromId === acc.id ? 'rgba(255,255,255,0.8)' : colors.textMuted }]}>
-                {formatCurrency(acc.balance)}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          {accounts.map((acc) => {
+            const selected = fromId === acc.id;
+            return (
+              <TouchableOpacity
+                key={acc.id}
+                onPress={() => handleSelectFrom(acc.id)}
+                style={[
+                  styles.accountChip,
+                  {
+                    backgroundColor: selected ? colors.primary : colors.mutedBg,
+                    borderColor: selected ? colors.primary : colors.surfaceBorder,
+                  },
+                ]}
+              >
+                <View style={styles.chipRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.accountName, { color: selected ? '#fff' : colors.text }]}>
+                      {acc.name}
+                    </Text>
+                    <Text style={[styles.accountBalance, { color: selected ? 'rgba(255,255,255,0.8)' : colors.textMuted }]}>
+                      {formatCurrency(acc.balance)}
+                    </Text>
+                  </View>
+                  {selected && <Ionicons name="checkmark-circle" size={22} color="#fff" />}
+                </View>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
-        <Text style={[styles.sectionLabel, { color: colors.textSecondary, marginTop: 20 }]}>Para</Text>
+        {/* Ícone de seta */}
+        {fromId !== '' && (
+          <View style={styles.arrowContainer}>
+            <View style={[styles.arrowCircle, { backgroundColor: colors.primary + '20' }]}>
+              <Ionicons name="arrow-down" size={20} color={colors.primary} />
+            </View>
+          </View>
+        )}
+
+        {/* Conta de destino */}
+        <Text style={[styles.sectionLabel, { color: colors.textSecondary }]}>Para</Text>
         <View style={styles.accountList}>
-          {accounts.filter((a) => a.id !== fromId).map((acc) => (
-            <TouchableOpacity
-              key={acc.id}
-              onPress={() => setToId(acc.id)}
-              style={[
-                styles.accountChip,
-                {
-                  backgroundColor: toId === acc.id ? colors.primary : colors.mutedBg,
-                  borderColor: toId === acc.id ? colors.primary : colors.surfaceBorder,
-                },
-              ]}
-            >
-              <Text style={[styles.accountName, { color: toId === acc.id ? '#fff' : colors.text }]}>
-                {acc.name}
-              </Text>
-              <Text style={[styles.accountBalance, { color: toId === acc.id ? 'rgba(255,255,255,0.8)' : colors.textMuted }]}>
-                {formatCurrency(acc.balance)}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          {accounts
+            .filter((a) => a.id !== fromId)
+            .map((acc) => {
+              const selected = toId === acc.id;
+              return (
+                <TouchableOpacity
+                  key={acc.id}
+                  onPress={() => setToId(acc.id)}
+                  style={[
+                    styles.accountChip,
+                    {
+                      backgroundColor: selected ? colors.primary : colors.mutedBg,
+                      borderColor: selected ? colors.primary : colors.surfaceBorder,
+                    },
+                  ]}
+                >
+                  <View style={styles.chipRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.accountName, { color: selected ? '#fff' : colors.text }]}>
+                        {acc.name}
+                      </Text>
+                      <Text style={[styles.accountBalance, { color: selected ? 'rgba(255,255,255,0.8)' : colors.textMuted }]}>
+                        {formatCurrency(acc.balance)}
+                      </Text>
+                    </View>
+                    {selected && <Ionicons name="checkmark-circle" size={22} color="#fff" />}
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          {fromId === '' && (
+            <Text style={[styles.hint, { color: colors.textMuted }]}>
+              Selecione a conta de origem primeiro
+            </Text>
+          )}
         </View>
 
+        {/* Valor e descrição */}
         <View style={{ marginTop: 20 }}>
           <InputField
             label="Valor (R$)"
@@ -92,13 +173,59 @@ const TransferScreen = () => {
           />
         </View>
 
+        <View style={{ marginTop: 4 }}>
+          <InputField
+            label="Descrição (opcional)"
+            value={description}
+            onChangeText={setDescription}
+            placeholder="Ex: Pagamento de fatura"
+          />
+        </View>
+
+        {/* Resumo */}
+        {canSubmit && (
+          <View style={[styles.summaryCard, { backgroundColor: colors.mutedBg, borderColor: colors.surfaceBorder }]}>
+            <Text style={[styles.summaryTitle, { color: colors.textSecondary }]}>Resumo</Text>
+            <View style={styles.summaryRow}>
+              <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>De</Text>
+              <Text style={[styles.summaryValue, { color: colors.text }]}>{fromAccount?.name}</Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Para</Text>
+              <Text style={[styles.summaryValue, { color: colors.text }]}>{toAccount?.name}</Text>
+            </View>
+            <View style={styles.summaryRow}>
+              <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Valor</Text>
+              <Text style={[styles.summaryValue, { color: colors.primary, fontWeight: '700' }]}>
+                {formatCurrency(parsedAmount)}
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Botão de transferir */}
         <TouchableOpacity
-          style={[styles.submitBtn, { backgroundColor: colors.primary }]}
+          style={[
+            styles.submitBtn,
+            { backgroundColor: canSubmit ? colors.primary : colors.mutedBg },
+          ]}
           onPress={handleTransfer}
+          disabled={!canSubmit}
+          activeOpacity={0.8}
         >
-          <Ionicons name="swap-horizontal" size={20} color="#fff" />
-          <Text style={styles.submitText}>Transferir</Text>
+          {loading ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <>
+              <Ionicons name="swap-horizontal" size={20} color={canSubmit ? '#fff' : colors.textMuted} />
+              <Text style={[styles.submitText, { color: canSubmit ? '#fff' : colors.textMuted }]}>
+                Transferir
+              </Text>
+            </>
+          )}
         </TouchableOpacity>
+
+        <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -123,6 +250,10 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
   },
+  chipRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   accountName: {
     fontSize: 14,
     fontWeight: '600',
@@ -130,6 +261,46 @@ const styles = StyleSheet.create({
   accountBalance: {
     fontSize: 12,
     marginTop: 2,
+  },
+  hint: {
+    fontSize: 12,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  arrowContainer: {
+    alignItems: 'center',
+    marginVertical: 12,
+  },
+  arrowCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  summaryCard: {
+    marginTop: 20,
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 8,
+  },
+  summaryTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  summaryLabel: {
+    fontSize: 13,
+  },
+  summaryValue: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   submitBtn: {
     flexDirection: 'row',
@@ -141,7 +312,6 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
   submitText: {
-    color: '#fff',
     fontSize: 16,
     fontWeight: '700',
   },

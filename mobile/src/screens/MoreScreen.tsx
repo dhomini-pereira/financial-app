@@ -63,8 +63,16 @@ const MoreScreen = () => {
         {/* Investments Summary */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Ionicons name="trending-up-outline" size={18} color={colors.investment} />
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Investimentos</Text>
+            <View style={styles.sectionLeft}>
+              <Ionicons name="trending-up-outline" size={18} color={colors.investment} />
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Investimentos</Text>
+            </View>
+            {investments.length > 3 && (
+              <TouchableOpacity onPress={() => navigation.navigate('ManageInvestments')} style={styles.seeAllBtn}>
+                <Text style={[styles.seeAllText, { color: colors.primary }]}>Ver todos</Text>
+                <Ionicons name="chevron-forward" size={14} color={colors.primary} />
+              </TouchableOpacity>
+            )}
           </View>
           <StatCard>
             <View style={styles.investRow}>
@@ -76,7 +84,7 @@ const MoreScreen = () => {
               <Text style={[styles.investValue, { color: colors.income }]}>{mv(totalReturn)}</Text>
             </View>
           </StatCard>
-          {investments.map((inv) => (
+          {investments.slice(0, 3).map((inv) => (
             <StatCard key={inv.id} style={styles.investCard}>
               <View style={styles.investItemRow}>
                 <View style={{ flex: 1 }}>
@@ -99,10 +107,18 @@ const MoreScreen = () => {
         {/* Goals Summary */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Ionicons name="flag-outline" size={18} color={colors.warning} />
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Metas</Text>
+            <View style={styles.sectionLeft}>
+              <Ionicons name="flag-outline" size={18} color={colors.warning} />
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Metas</Text>
+            </View>
+            {goals.length > 3 && (
+              <TouchableOpacity onPress={() => navigation.navigate('ManageGoals')} style={styles.seeAllBtn}>
+                <Text style={[styles.seeAllText, { color: colors.primary }]}>Ver todas</Text>
+                <Ionicons name="chevron-forward" size={14} color={colors.primary} />
+              </TouchableOpacity>
+            )}
           </View>
-          {goals.map((goal) => {
+          {goals.slice(0, 3).map((goal) => {
             const pct = Math.min(100, (goal.currentAmount / goal.targetAmount) * 100);
             return (
               <StatCard key={goal.id} style={styles.goalCard}>
@@ -127,12 +143,6 @@ const MoreScreen = () => {
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 10 }]}>Gerenciamento</Text>
 
-          <MenuItem
-            icon="card-outline"
-            label="Gerenciar Contas"
-            onPress={() => navigation.navigate('ManageAccounts')}
-            colors={colors}
-          />
           <MenuItem
             icon="flag-outline"
             label="Gerenciar Metas"
@@ -277,8 +287,22 @@ const styles = StyleSheet.create({
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'space-between',
     marginBottom: 12,
+  },
+  sectionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  seeAllBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  seeAllText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   sectionTitle: {
     fontSize: 15,

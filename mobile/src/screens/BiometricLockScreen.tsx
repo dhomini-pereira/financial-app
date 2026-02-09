@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import React, { useEffect, useCallback, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, AppState, AppStateStatus } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/theme/ThemeProvider';
@@ -8,15 +8,30 @@ import { useAuthStore } from '@/store/useAuthStore';
 const BiometricLockScreen = () => {
   const { colors } = useTheme();
   const { user, unlockWithBiometric, logout } = useAuthStore();
+  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+
+  const handleUnlock = useCallback(async () => {
+    // Pequeno delay para garantir que o prompt biométrico apareça corretamente
+    // quando voltando do background/recents
+    await new Promise((r) => setTimeout(r, 300));
+    await unlockWithBiometric();
+  }, [unlockWithBiometric]);
 
   useEffect(() => {
-    // Tenta desbloquear automaticamente ao montar
     handleUnlock();
   }, []);
 
-  const handleUnlock = async () => {
-    await unlockWithBiometric();
-  };
+  // Re-tenta biometria quando o app volta ao foreground na tela de lock
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (nextState: AppStateStatus) => {
+      const prev = appStateRef.current;
+      appStateRef.current = nextState;
+      if (nextState === 'active' && (prev === 'background' || prev === 'inactive')) {
+        handleUnlock();
+      }
+    });
+    return () => sub.remove();
+  }, [handleUnlock]);
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
@@ -25,7 +40,7 @@ const BiometricLockScreen = () => {
           <View style={[styles.logoBox, { backgroundColor: colors.primary }]}>
             <Ionicons name="trending-up" size={36} color="#fff" />
           </View>
-          <Text style={[styles.appName, { color: colors.text }]}>FinançasPro</Text>
+          <Text style={[styles.appName, { color: colors.text }]}>Nexo</Text>
           <Text style={[styles.greeting, { color: colors.textSecondary }]}>
             Olá, {user?.name ?? 'Usuário'} 👋
           </Text>

@@ -1,12 +1,13 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
-  ScrollView,
+  FlatList,
   StyleSheet,
   TouchableOpacity,
   TextInput,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +22,8 @@ import StatCard from '@/components/StatCard';
 import PillButton from '@/components/PillButton';
 import type { RootStackParamList } from '@/navigation';
 
+const PAGE_SIZE = 10;
+
 const TransactionsScreen = () => {
   const { colors } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -28,6 +31,8 @@ const TransactionsScreen = () => {
   const { privacyMode } = useAuthStore();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'income' | 'expense'>('all');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const mv = (v: number) => maskValue(privacyMode, formatCurrency(v));
   const getCat = (id: string) => categories.find((c) => c.id === id);
@@ -39,10 +44,34 @@ const TransactionsScreen = () => {
     return list;
   }, [transactions, filter, search]);
 
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [filter, search]);
+
+  const displayed = useMemo(
+    () => filtered.slice(0, visibleCount),
+    [filtered, visibleCount],
+  );
+
+  const loadMore = useCallback(() => {
+    setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, filtered.length));
+  }, [filtered.length]);
+
   const handleDelete = (id: string, desc: string) => {
     Alert.alert('Excluir transação', `Deseja excluir "${desc}"?`, [
       { text: 'Cancelar', style: 'cancel' },
-      { text: 'Excluir', style: 'destructive', onPress: () => deleteTransaction(id) },
+      {
+        text: 'Excluir',
+        style: 'destructive',
+        onPress: async () => {
+          setDeletingId(id);
+          try {
+            await deleteTransaction(id);
+          } catch (err: any) {
+            Alert.alert('Erro', err.message || 'Falha ao excluir transação.');
+          } finally {
+            setDeletingId(null);
+          }
+        },
+      },
     ]);
   };
 
@@ -71,17 +100,29 @@ const TransactionsScreen = () => {
         <PillButton label="Despesas" active={filter === 'expense'} onPress={() => setFilter('expense')} />
       </View>
 
-      <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
-        {filtered.length === 0 && (
+      <FlatList
+        data={displayed}
+        keyExtractor={(item) => item.id}
+        style={styles.list}
+        showsVerticalScrollIndicator={false}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.5}
+        ListEmptyComponent={
           <Text style={[styles.emptyText, { color: colors.textMuted }]}>
             Nenhuma transação encontrada
           </Text>
-        )}
-        {filtered.map((tx) => {
+        }
+        ListFooterComponent={
+          visibleCount < filtered.length ? (
+            <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 16 }} />
+          ) : (
+            <View style={{ height: 100 }} />
+          )
+        }
+        renderItem={({ item: tx }) => {
           const cat = getCat(tx.categoryId);
           return (
             <TouchableOpacity
-              key={tx.id}
               onLongPress={() => handleDelete(tx.id, tx.description)}
               activeOpacity={0.7}
             >
@@ -107,20 +148,23 @@ const TransactionsScreen = () => {
                       {tx.type === 'income' ? '+' : '-'}
                       {mv(tx.amount)}
                     </Text>
-                    <TouchableOpacity
-                      onPress={() => handleDelete(tx.id, tx.description)}
-                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    >
-                      <Ionicons name="trash-outline" size={16} color={colors.destructive} />
-                    </TouchableOpacity>
+                    {deletingId === tx.id ? (
+                      <ActivityIndicator size="small" color={colors.destructive} />
+                    ) : (
+                      <TouchableOpacity
+                        onPress={() => handleDelete(tx.id, tx.description)}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      >
+                        <Ionicons name="trash-outline" size={16} color={colors.destructive} />
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </View>
               </StatCard>
             </TouchableOpacity>
           );
-        })}
-        <View style={{ height: 100 }} />
-      </ScrollView>
+        }}
+      />
 
       {/* FAB */}
       <TouchableOpacity

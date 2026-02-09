@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
-  ScrollView,
+  FlatList,
   StyleSheet,
   TouchableOpacity,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,6 +22,19 @@ import ConfirmDialog from '@/components/ConfirmDialog';
 import type { Investment } from '@/types/finance';
 
 const investmentTypes = ['CDB', 'Tesouro', 'Ações', 'FII', 'Reserva', 'Cripto', 'Outro'];
+
+const PAGE_SIZE = 10;
+
+const parseAmount = (raw: string): number => {
+  const s = raw.trim();
+  if (s.includes(',') && s.includes('.')) {
+    return parseFloat(s.replace(/\./g, '').replace(',', '.')) || 0;
+  }
+  if (s.includes(',')) {
+    return parseFloat(s.replace(',', '.')) || 0;
+  }
+  return parseFloat(s) || 0;
+};
 
 const ManageInvestmentsScreen = () => {
   const { colors } = useTheme();
@@ -42,6 +57,14 @@ const ManageInvestmentsScreen = () => {
   const [currentValue, setCurrentValue] = useState('');
   const [returnRate, setReturnRate] = useState('');
   const [startDate, setStartDate] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
+  const displayed = useMemo(() => investments.slice(0, visibleCount), [investments, visibleCount]);
+
+  const loadMore = useCallback(() => {
+    setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, investments.length));
+  }, [investments.length]);
 
   const openAdd = () => {
     setEditing(null);
@@ -66,31 +89,37 @@ const ManageInvestmentsScreen = () => {
   };
 
   const handleSave = async () => {
-    const principalNum = parseFloat(principal) || 0;
-    const currentNum = parseFloat(currentValue) || 0;
-    const rateNum = parseFloat(returnRate) || 0;
+    const principalNum = parseAmount(principal);
+    const currentNum = parseAmount(currentValue);
+    const rateNum = parseAmount(returnRate);
     if (!name.trim() || principalNum <= 0) return;
-
-    if (editing) {
-      await updateInvestment(editing.id, {
-        name,
-        type,
-        principal: principalNum,
-        currentValue: currentNum || principalNum,
-        returnRate: rateNum,
-        startDate,
-      });
-    } else {
-      await addInvestment({
-        name,
-        type,
-        principal: principalNum,
-        currentValue: currentNum || principalNum,
-        returnRate: rateNum,
-        startDate: startDate || new Date().toISOString().split('T')[0],
-      });
+    setSaving(true);
+    try {
+      if (editing) {
+        await updateInvestment(editing.id, {
+          name,
+          type,
+          principal: principalNum,
+          currentValue: currentNum || principalNum,
+          returnRate: rateNum,
+          startDate,
+        });
+      } else {
+        await addInvestment({
+          name,
+          type,
+          principal: principalNum,
+          currentValue: currentNum || principalNum,
+          returnRate: rateNum,
+          startDate: startDate || new Date().toISOString().split('T')[0],
+        });
+      }
+      setModalVisible(false);
+    } catch (err: any) {
+      Alert.alert('Erro', err.message || 'Falha ao salvar investimento.');
+    } finally {
+      setSaving(false);
     }
-    setModalVisible(false);
   };
 
   const confirmDelete = (inv: Investment) => {
@@ -100,43 +129,62 @@ const ManageInvestmentsScreen = () => {
 
   const handleDelete = async () => {
     if (toDelete) {
-      await deleteInvestment(toDelete.id);
-      setDeleteVisible(false);
-      setToDelete(null);
+      try {
+        await deleteInvestment(toDelete.id);
+        setDeleteVisible(false);
+        setToDelete(null);
+      } catch (err: any) {
+        Alert.alert('Erro', err.message || 'Falha ao excluir investimento.');
+      }
     }
   };
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={[]}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Summary */}
-        <BalanceCard label="Total investido" value={mv(totalInvested)}>
-          <View style={styles.balanceRow}>
-            <View>
-              <Text style={styles.balanceLabel}>Investido</Text>
-              <Text style={styles.balanceValue}>{mv(totalPrincipal)}</Text>
+      <FlatList
+        data={displayed}
+        keyExtractor={(item) => item.id}
+        showsVerticalScrollIndicator={false}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.5}
+        ListHeaderComponent={
+          <>
+            <BalanceCard label="Total investido" value={mv(totalInvested)}>
+              <View style={styles.balanceRow}>
+                <View>
+                  <Text style={styles.balanceLabel}>Investido</Text>
+                  <Text style={styles.balanceValue}>{mv(totalPrincipal)}</Text>
+                </View>
+                <View>
+                  <Text style={styles.balanceLabel}>Rendimento</Text>
+                  <Text style={[styles.balanceValue, { color: '#86efac' }]}>+{mv(totalReturn)}</Text>
+                </View>
+              </View>
+            </BalanceCard>
+            <View style={styles.content}>
+              <TouchableOpacity
+                style={[styles.addBtn, { backgroundColor: colors.primary }]}
+                onPress={openAdd}
+              >
+                <Ionicons name="add" size={20} color="#fff" />
+                <Text style={styles.addBtnText}>Adicionar Investimento</Text>
+              </TouchableOpacity>
             </View>
-            <View>
-              <Text style={styles.balanceLabel}>Rendimento</Text>
-              <Text style={[styles.balanceValue, { color: '#86efac' }]}>+{mv(totalReturn)}</Text>
-            </View>
-          </View>
-        </BalanceCard>
-
-        <View style={styles.content}>
-          <TouchableOpacity
-            style={[styles.addBtn, { backgroundColor: colors.primary }]}
-            onPress={openAdd}
-          >
-            <Ionicons name="add" size={20} color="#fff" />
-            <Text style={styles.addBtnText}>Adicionar Investimento</Text>
-          </TouchableOpacity>
-
-          {investments.map((inv) => {
-            const returnVal = inv.currentValue - inv.principal;
-            const returnPct = inv.principal > 0 ? ((returnVal / inv.principal) * 100).toFixed(1) : '0';
-            return (
-              <StatCard key={inv.id} style={styles.card}>
+          </>
+        }
+        ListFooterComponent={
+          visibleCount < investments.length ? (
+            <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 16 }} />
+          ) : (
+            <View style={{ height: 20 }} />
+          )
+        }
+        renderItem={({ item: inv }) => {
+          const returnVal = inv.currentValue - inv.principal;
+          const returnPct = inv.principal > 0 ? ((returnVal / inv.principal) * 100).toFixed(1) : '0';
+          return (
+            <View style={styles.content}>
+              <StatCard style={styles.card}>
                 <View style={styles.cardHeader}>
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.cardName, { color: colors.text }]}>{inv.name}</Text>
@@ -170,10 +218,10 @@ const ManageInvestmentsScreen = () => {
                   </View>
                 </View>
               </StatCard>
-            );
-          })}
-        </View>
-      </ScrollView>
+            </View>
+          );
+        }}
+      />
 
       {/* Add/Edit Modal */}
       <FormModal
@@ -182,11 +230,12 @@ const ManageInvestmentsScreen = () => {
         title={editing ? 'Editar Investimento' : 'Novo Investimento'}
         onSave={handleSave}
         saveLabel={editing ? 'Salvar' : 'Adicionar'}
+        saving={saving}
       >
         <InputField label="Nome" value={name} onChangeText={setName} placeholder="Ex: CDB Banco Inter" />
 
         <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Tipo</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeScroll}>
+        <View style={styles.typeRow}>
           {investmentTypes.map((t) => (
             <TouchableOpacity
               key={t}
@@ -201,7 +250,7 @@ const ManageInvestmentsScreen = () => {
               </Text>
             </TouchableOpacity>
           ))}
-        </ScrollView>
+        </View>
 
         <View style={styles.rowInputs}>
           <View style={{ flex: 1 }}>
@@ -267,7 +316,7 @@ const styles = StyleSheet.create({
   valueLabel: { fontSize: 10 },
   valueText: { fontSize: 13, fontWeight: '600', marginTop: 2 },
   fieldLabel: { fontSize: 13, fontWeight: '600', marginBottom: 8 },
-  typeScroll: { marginBottom: 16 },
+  typeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
   typeChip: {
     paddingHorizontal: 16,
     paddingVertical: 10,

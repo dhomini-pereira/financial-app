@@ -6,6 +6,7 @@ import { authApi, saveTokens, clearTokens, loadTokens } from '@/services/api';
 import type { User } from '@/types/finance';
 
 const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 dias
+const GRACE_PERIOD_MS = 2 * 60 * 1000; // 2 minutos – não pede biometria se voltou rápido
 
 interface AuthState {
   user: User | null;
@@ -15,6 +16,7 @@ interface AuthState {
   biometricEnabled: boolean;
   biometricLocked: boolean;
   loginTimestamp: number | null;
+  lastBackgroundTs: number | null; // quando foi pro background
   loading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   register: (name: string, email: string, password: string) => Promise<boolean>;
@@ -26,6 +28,7 @@ interface AuthState {
   unlockWithBiometric: () => Promise<boolean>;
   checkSession: () => boolean;
   lockApp: () => void;
+  handleReturnFromBackground: () => void;
   restoreSession: () => Promise<boolean>;
 }
 
@@ -39,6 +42,7 @@ export const useAuthStore = create<AuthState>()(
       biometricEnabled: false,
       biometricLocked: false,
       loginTimestamp: null,
+      lastBackgroundTs: null,
       loading: false,
 
       login: async (email, password) => {
@@ -93,6 +97,7 @@ export const useAuthStore = create<AuthState>()(
           biometricEnabled: false,
           biometricLocked: false,
           loginTimestamp: null,
+          lastBackgroundTs: null,
         });
       },
 
@@ -116,7 +121,7 @@ export const useAuthStore = create<AuthState>()(
           if (!isEnrolled) return false;
 
           const result = await LocalAuthentication.authenticateAsync({
-            promptMessage: 'Desbloqueie para acessar o FinançasPro',
+            promptMessage: 'Desbloqueie para acessar o Nexo',
             cancelLabel: 'Usar senha',
             disableDeviceFallback: false,
           });
@@ -132,7 +137,7 @@ export const useAuthStore = create<AuthState>()(
       },
 
       checkSession: () => {
-        const { loginTimestamp, isAuthenticated, biometricEnabled } = get();
+        const { loginTimestamp, isAuthenticated } = get();
         if (!isAuthenticated || !loginTimestamp) return false;
         const elapsed = Date.now() - loginTimestamp;
         if (elapsed > SESSION_DURATION_MS) {
@@ -143,18 +148,35 @@ export const useAuthStore = create<AuthState>()(
             biometricEnabled: false,
             biometricLocked: false,
             loginTimestamp: null,
+            lastBackgroundTs: null,
           });
           return false;
-        }
-        if (biometricEnabled) {
-          set({ biometricLocked: true });
         }
         return true;
       },
 
+      // Chamado quando o app vai pro background
       lockApp: () => {
         if (get().biometricEnabled && get().isAuthenticated) {
-          set({ biometricLocked: true });
+          set({ lastBackgroundTs: Date.now() });
+        }
+      },
+
+      // Chamado quando o app volta do background
+      handleReturnFromBackground: () => {
+        const { biometricEnabled, isAuthenticated, lastBackgroundTs } = get();
+        if (!biometricEnabled || !isAuthenticated) return;
+        if (!lastBackgroundTs) {
+          // Primeira vez – trata como se tivesse grace
+          return;
+        }
+        const away = Date.now() - lastBackgroundTs;
+        if (away > GRACE_PERIOD_MS) {
+          // Ficou fora por muito tempo → bloqueia
+          set({ biometricLocked: true, lastBackgroundTs: null });
+        } else {
+          // Voltou rápido → não bloqueia (grace period)
+          set({ lastBackgroundTs: null });
         }
       },
 

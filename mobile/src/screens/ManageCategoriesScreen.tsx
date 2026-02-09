@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
-  ScrollView,
+  FlatList,
   StyleSheet,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,6 +25,8 @@ const emojiOptions = [
   '🎵', '👕', '🐱', '🎁', '💡', '📱', '🏦', '🍕',
 ];
 
+const PAGE_SIZE = 10;
+
 const ManageCategoriesScreen = () => {
   const { colors } = useTheme();
   const { categories, addCategory, updateCategory, deleteCategory } = useFinanceStore();
@@ -41,6 +44,16 @@ const ManageCategoriesScreen = () => {
   const filtered = filter === 'all'
     ? categories
     : categories.filter((c) => c.type === filter);
+
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [filter]);
+
+  const displayed = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
+
+  const loadMore = useCallback(() => {
+    setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, filtered.length));
+  }, [filtered.length]);
 
   const incomeCount = categories.filter((c) => c.type === 'income').length;
   const expenseCount = categories.filter((c) => c.type === 'expense').length;
@@ -91,43 +104,58 @@ const ManageCategoriesScreen = () => {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={[]}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Summary */}
-        <View style={styles.summaryRow}>
-          <StatCard style={styles.summaryCard}>
-            <View style={styles.summaryItem}>
-              <Ionicons name="arrow-up-circle-outline" size={20} color={colors.income} />
-              <Text style={[styles.summaryCount, { color: colors.text }]}>{incomeCount}</Text>
-              <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Receitas</Text>
+      <FlatList
+        data={displayed}
+        keyExtractor={(item) => item.id}
+        showsVerticalScrollIndicator={false}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.5}
+        ListHeaderComponent={
+          <>
+            {/* Summary */}
+            <View style={styles.summaryRow}>
+              <StatCard style={styles.summaryCard}>
+                <View style={styles.summaryItem}>
+                  <Ionicons name="arrow-up-circle-outline" size={20} color={colors.income} />
+                  <Text style={[styles.summaryCount, { color: colors.text }]}>{incomeCount}</Text>
+                  <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Receitas</Text>
+                </View>
+              </StatCard>
+              <StatCard style={styles.summaryCard}>
+                <View style={styles.summaryItem}>
+                  <Ionicons name="arrow-down-circle-outline" size={20} color={colors.expense} />
+                  <Text style={[styles.summaryCount, { color: colors.text }]}>{expenseCount}</Text>
+                  <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Despesas</Text>
+                </View>
+              </StatCard>
             </View>
-          </StatCard>
-          <StatCard style={styles.summaryCard}>
-            <View style={styles.summaryItem}>
-              <Ionicons name="arrow-down-circle-outline" size={20} color={colors.expense} />
-              <Text style={[styles.summaryCount, { color: colors.text }]}>{expenseCount}</Text>
-              <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Despesas</Text>
+            <View style={styles.content}>
+              {/* Filter */}
+              <View style={styles.filterRow}>
+                <PillButton label="Todas" active={filter === 'all'} onPress={() => setFilter('all')} />
+                <PillButton label="Receitas" active={filter === 'income'} onPress={() => setFilter('income')} />
+                <PillButton label="Despesas" active={filter === 'expense'} onPress={() => setFilter('expense')} />
+              </View>
+              <TouchableOpacity
+                style={[styles.addBtn, { backgroundColor: colors.primary }]}
+                onPress={openAdd}
+              >
+                <Ionicons name="add" size={20} color="#fff" />
+                <Text style={styles.addBtnText}>Adicionar Categoria</Text>
+              </TouchableOpacity>
             </View>
-          </StatCard>
-        </View>
-
-        <View style={styles.content}>
-          {/* Filter */}
-          <View style={styles.filterRow}>
-            <PillButton label="Todas" active={filter === 'all'} onPress={() => setFilter('all')} />
-            <PillButton label="Receitas" active={filter === 'income'} onPress={() => setFilter('income')} />
-            <PillButton label="Despesas" active={filter === 'expense'} onPress={() => setFilter('expense')} />
-          </View>
-
-          <TouchableOpacity
-            style={[styles.addBtn, { backgroundColor: colors.primary }]}
-            onPress={openAdd}
-          >
-            <Ionicons name="add" size={20} color="#fff" />
-            <Text style={styles.addBtnText}>Adicionar Categoria</Text>
-          </TouchableOpacity>
-
-          {filtered.map((cat) => (
-            <StatCard key={cat.id} style={styles.card}>
+          </>
+        }
+        ListFooterComponent={
+          visibleCount < filtered.length ? (
+            <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 16 }} />
+          ) : (
+            <View style={{ height: 20 }} />
+          )
+        }
+        renderItem={({ item: cat }) => (
+          <View style={styles.content}>
+            <StatCard style={styles.card}>
               <View style={styles.row}>
                 <View style={styles.left}>
                   <View style={[styles.emojiBox, { backgroundColor: colors.mutedBg }]}>
@@ -155,9 +183,9 @@ const ManageCategoriesScreen = () => {
                 </View>
               </View>
             </StatCard>
-          ))}
-        </View>
-      </ScrollView>
+          </View>
+        )}
+      />
 
       {/* Add/Edit Modal */}
       <FormModal

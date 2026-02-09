@@ -15,7 +15,6 @@ import DashboardScreen from '@/screens/DashboardScreen';
 import TransactionsScreen from '@/screens/TransactionsScreen';
 import AccountsScreen from '@/screens/AccountsScreen';
 import MoreScreen from '@/screens/MoreScreen';
-import ManageAccountsScreen from '@/screens/ManageAccountsScreen';
 import ManageGoalsScreen from '@/screens/ManageGoalsScreen';
 import ManageCategoriesScreen from '@/screens/ManageCategoriesScreen';
 import ManageInvestmentsScreen from '@/screens/ManageInvestmentsScreen';
@@ -27,7 +26,6 @@ export type RootStackParamList = {
   Login: undefined;
   BiometricLock: undefined;
   Main: undefined;
-  ManageAccounts: undefined;
   ManageGoals: undefined;
   ManageCategories: undefined;
   ManageInvestments: undefined;
@@ -149,8 +147,17 @@ const tabBarStyles = NavStyles.create({
 
 const AppNavigation = () => {
   const { colors, dark } = useTheme();
-  const { isAuthenticated, biometricEnabled, biometricLocked, checkSession, lockApp, restoreSession } = useAuthStore();
+  const {
+    isAuthenticated,
+    biometricEnabled,
+    biometricLocked,
+    checkSession,
+    lockApp,
+    handleReturnFromBackground,
+    restoreSession,
+  } = useAuthStore();
   const { fetchAll, reset } = useFinanceStore();
+  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
 
   // Ao montar, tenta restaurar sessão do token salvo
   useEffect(() => {
@@ -171,13 +178,16 @@ const AppNavigation = () => {
     }
   }, [isAuthenticated]);
 
-  // Quando o app volta do background, bloqueia se biometria está ativada
+  // Grace period: só bloqueia se ficou fora por mais de 2 min
   useEffect(() => {
     const handleAppState = (nextState: AppStateStatus) => {
-      if (nextState === 'active') {
-        // Ao voltar para foreground verifica sessão e (re)trava se tiver biometria
+      const prev = appStateRef.current;
+      appStateRef.current = nextState;
+
+      if (nextState === 'active' && (prev === 'background' || prev === 'inactive')) {
         const valid = checkSession();
-        if (!valid) return; // session expirou, vai pro login
+        if (!valid) return;
+        handleReturnFromBackground();
       } else if (nextState === 'background' || nextState === 'inactive') {
         lockApp();
       }
@@ -231,11 +241,6 @@ const AppNavigation = () => {
               name="Main"
               component={TabNavigator}
               options={{ headerShown: false }}
-            />
-            <Stack.Screen
-              name="ManageAccounts"
-              component={ManageAccountsScreen}
-              options={{ title: 'Gerenciar Contas' }}
             />
             <Stack.Screen
               name="ManageGoals"

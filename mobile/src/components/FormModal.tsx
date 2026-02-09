@@ -9,6 +9,9 @@ import {
   Platform,
   ScrollView,
   Pressable,
+  Keyboard,
+  TouchableWithoutFeedback,
+  ActivityIndicator,
 } from 'react-native';
 import { useTheme } from '@/theme/ThemeProvider';
 
@@ -18,6 +21,7 @@ interface FormModalProps {
   title: string;
   onSave: () => void;
   saveLabel?: string;
+  saving?: boolean;
   children: React.ReactNode;
 }
 
@@ -27,59 +31,87 @@ const FormModal: React.FC<FormModalProps> = ({
   title,
   onSave,
   saveLabel = 'Salvar',
+  saving = false,
   children,
 }) => {
   const { colors } = useTheme();
 
   return (
     <Modal visible={visible} animationType="slide" transparent>
-      <Pressable style={[styles.overlay, { backgroundColor: colors.overlay }]} onPress={onClose}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.keyboardView}
-        >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.flex}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      >
+        <Pressable style={[styles.overlay, { backgroundColor: colors.overlay }]} onPress={onClose}>
           <Pressable
             style={[styles.content, { backgroundColor: colors.surface }]}
             onPress={(e) => e.stopPropagation()}
           >
+            <View style={[styles.handle, { backgroundColor: colors.surfaceBorder }]} />
             <View style={[styles.header, { borderBottomColor: colors.surfaceBorder }]}>
               <TouchableOpacity onPress={onClose}>
                 <Text style={[styles.cancelBtn, { color: colors.textSecondary }]}>Cancelar</Text>
               </TouchableOpacity>
               <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
-              <TouchableOpacity onPress={onSave}>
-                <Text style={[styles.saveBtn, { color: colors.primary }]}>{saveLabel}</Text>
+              <TouchableOpacity onPress={onSave} disabled={saving}>
+                {saving ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <Text style={[styles.saveBtn, { color: colors.primary }]}>{saveLabel}</Text>
+                )}
               </TouchableOpacity>
             </View>
-            <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
-              {children}
+            <ScrollView
+              style={styles.body}
+              contentContainerStyle={styles.bodyContent}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              bounces={false}
+            >
+              <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                <View>
+                  {children}
+                  {/* Espaço extra para que o teclado não tape os campos inferiores */}
+                  <View style={{ height: Platform.OS === 'android' ? 200 : 40 }} />
+                </View>
+              </TouchableWithoutFeedback>
             </ScrollView>
           </Pressable>
-        </KeyboardAvoidingView>
-      </Pressable>
+        </Pressable>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+  },
   overlay: {
     flex: 1,
-    justifyContent: 'flex-end',
-  },
-  keyboardView: {
     justifyContent: 'flex-end',
   },
   content: {
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    maxHeight: '90%',
+    maxHeight: '92%',
+    minHeight: '50%',
+  },
+  handle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginTop: 8,
+    marginBottom: 4,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingVertical: 14,
     borderBottomWidth: 1,
   },
   title: {
@@ -96,7 +128,9 @@ const styles = StyleSheet.create({
   body: {
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 40,
+  },
+  bodyContent: {
+    paddingBottom: 20,
   },
 });
 
