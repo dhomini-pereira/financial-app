@@ -15,7 +15,7 @@ export async function accountRoutes(app: FastifyInstance) {
   app.post('/accounts', async (request, reply) => {
     const { name, type, balance, color } = request.body as any;
     try {
-      const account = await service.create(request.userId, { name, type, balance: balance ?? 0, color: color ?? '#16a34a' });
+      const account = await service.create(request.userId, { name, type, balance: balance ?? 0, color: color ?? '#2563eb' });
       return reply.status(201).send(account);
     } catch (err: any) {
       return reply.status(err.statusCode || 500).send({ message: err.message });

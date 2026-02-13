@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Switch,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,7 +17,10 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { useFinanceStore } from '@/store/useFinanceStore';
 import PillButton from '@/components/PillButton';
 import InputField from '@/components/InputField';
+import CurrencyInput from '@/components/CurrencyInput';
 import type { RootStackParamList } from '@/navigation';
+import { parseCurrencyInput } from '@/lib/finance';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 
 type TransactionFormNav = NativeStackNavigationProp<RootStackParamList, 'TransactionForm'>;
 
@@ -37,6 +41,8 @@ const TransactionFormScreen = () => {
   const [amount, setAmount] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [accountId, setAccountId] = useState('');
+  const [date, setDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [recurring, setRecurring] = useState(false);
   const [recurrence, setRecurrence] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('monthly');
   const [loading, setLoading] = useState(false);
@@ -44,22 +50,30 @@ const TransactionFormScreen = () => {
 
   const filteredCats = categories.filter((c) => c.type === type);
 
-  /** Aceita "1.500,50" ou "1500.50" ou "1500,50" ou "150" */
-  const parseAmount = (text: string): number => {
-    if (!text || !text.trim()) return 0;
-    let cleaned = text.trim();
-    if (cleaned.includes(',')) {
-      cleaned = cleaned.replace(/\./g, '').replace(',', '.');
-    }
-    const n = parseFloat(cleaned);
-    return isNaN(n) ? 0 : n;
+  const formatDateDisplay = (d: Date): string => {
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  const toISODate = (d: Date): string => {
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${year}-${month}-${day}`;
+  };
+
+  const handleDateChange = (_event: DateTimePickerEvent, selectedDate?: Date) => {
+    if (Platform.OS === 'android') setShowDatePicker(false);
+    if (selectedDate) setDate(selectedDate);
   };
 
   const handleSubmit = async () => {
     setError('');
     if (!description.trim()) { setError('Informe a descrição.'); return; }
-    const parsedAmount = parseAmount(amount);
-    if (!parsedAmount || parsedAmount <= 0) { setError('Informe um valor válido (ex: 150,00).'); return; }
+    const parsedAmount = parseCurrencyInput(amount);
+    if (!parsedAmount || parsedAmount <= 0) { setError('Informe um valor válido.'); return; }
     if (!categoryId) { setError('Selecione uma categoria.'); return; }
     if (!accountId) { setError('Selecione uma conta.'); return; }
 
@@ -71,7 +85,7 @@ const TransactionFormScreen = () => {
         type,
         categoryId,
         accountId,
-        date: new Date().toISOString().split('T')[0],
+        date: toISODate(date),
         recurring,
         ...(recurring ? { recurrence } : {}),
       });
@@ -106,7 +120,31 @@ const TransactionFormScreen = () => {
         </View>
 
         <InputField label="Descrição" value={description} onChangeText={setDescription} placeholder="Ex: Supermercado" />
-        <InputField label="Valor (R$)" value={amount} onChangeText={setAmount} placeholder="0,00" keyboardType="numeric" />
+        <CurrencyInput label="Valor" value={amount} onChangeText={setAmount} />
+
+        {/* Seletor de data */}
+        <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Data</Text>
+        <TouchableOpacity
+          style={[styles.dateBtn, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}
+          onPress={() => setShowDatePicker(true)}
+        >
+          <Ionicons name="calendar-outline" size={18} color={colors.textSecondary} />
+          <Text style={[styles.dateBtnText, { color: colors.text }]}>{formatDateDisplay(date)}</Text>
+        </TouchableOpacity>
+        {showDatePicker && (
+          <DateTimePicker
+            value={date}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={handleDateChange}
+            locale="pt-BR"
+          />
+        )}
+        {showDatePicker && Platform.OS === 'ios' && (
+          <TouchableOpacity style={[styles.dateConfirm, { backgroundColor: colors.primary }]} onPress={() => setShowDatePicker(false)}>
+            <Text style={styles.dateConfirmText}>Confirmar</Text>
+          </TouchableOpacity>
+        )}
 
         <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Categoria</Text>
         {filteredCats.length === 0 ? (
@@ -217,6 +255,10 @@ const styles = StyleSheet.create({
   recurringLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   recurringLabel: { fontSize: 14, fontWeight: '500' },
   recurrenceChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
+  dateBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, height: 48, borderRadius: 12, paddingHorizontal: 16, borderWidth: 1, marginBottom: 16 },
+  dateBtnText: { fontSize: 15, fontWeight: '500' },
+  dateConfirm: { alignSelf: 'flex-end', paddingHorizontal: 20, paddingVertical: 8, borderRadius: 10, marginBottom: 12 },
+  dateConfirmText: { color: '#fff', fontSize: 14, fontWeight: '600' },
 });
 
 export default TransactionFormScreen;

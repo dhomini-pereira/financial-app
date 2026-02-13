@@ -13,11 +13,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useFinanceStore } from '@/store/useFinanceStore';
-import { formatCurrency } from '@/lib/finance';
+import { formatCurrency, parseCurrencyInput } from '@/lib/finance';
 import InputField from '@/components/InputField';
+import CurrencyInput from '@/components/CurrencyInput';
 
 /** Aceita "1.500,50" ou "1500.50" ou "1500,50" */
 const parseAmount = (raw: string): number => {
+  // Se for máscara R$, usa parseCurrencyInput
+  if (raw.includes('R$')) return parseCurrencyInput(raw);
   const s = raw.trim();
   if (!s) return 0;
   if (s.includes(',') && s.includes('.')) {
@@ -164,12 +167,10 @@ const TransferScreen = () => {
 
         {/* Valor e descrição */}
         <View style={{ marginTop: 20 }}>
-          <InputField
-            label="Valor (R$)"
+          <CurrencyInput
+            label="Valor"
             value={amount}
             onChangeText={setAmount}
-            placeholder="0,00"
-            keyboardType="numeric"
           />
         </View>
 

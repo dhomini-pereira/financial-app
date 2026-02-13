@@ -1,6 +1,30 @@
 export const formatCurrency = (value: number): string =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
+/**
+ * Formata string de centavos para máscara de moeda "R$ 1.234,56".
+ * Recebe o texto bruto (apenas dígitos) e retorna formatado.
+ */
+export const formatCurrencyInput = (raw: string): string => {
+  const digits = raw.replace(/\D/g, '');
+  if (!digits) return '';
+  const cents = parseInt(digits, 10);
+  const reais = cents / 100;
+  return reais.toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  });
+};
+
+/**
+ * Converte texto de máscara "R$ 1.234,56" para número 1234.56
+ */
+export const parseCurrencyInput = (masked: string): number => {
+  const digits = masked.replace(/\D/g, '');
+  if (!digits) return 0;
+  return parseInt(digits, 10) / 100;
+};
+
 export const formatDate = (date: string): string =>
   new Date(date).toLocaleDateString('pt-BR');
 

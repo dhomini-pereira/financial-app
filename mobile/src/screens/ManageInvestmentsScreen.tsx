@@ -7,18 +7,21 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFinanceStore } from '@/store/useFinanceStore';
-import { formatCurrency, maskValue, formatDate } from '@/lib/finance';
+import { formatCurrency, maskValue, formatDate, parseCurrencyInput, formatCurrencyInput } from '@/lib/finance';
 import StatCard from '@/components/StatCard';
 import BalanceCard from '@/components/BalanceCard';
 import InputField from '@/components/InputField';
+import CurrencyInput from '@/components/CurrencyInput';
 import FormModal from '@/components/FormModal';
 import ConfirmDialog from '@/components/ConfirmDialog';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import type { Investment } from '@/types/finance';
 
 const investmentTypes = ['CDB', 'Tesouro', 'Ações', 'FII', 'Reserva', 'Cripto', 'Outro'];
@@ -56,7 +59,8 @@ const ManageInvestmentsScreen = () => {
   const [principal, setPrincipal] = useState('');
   const [currentValue, setCurrentValue] = useState('');
   const [returnRate, setReturnRate] = useState('');
-  const [startDate, setStartDate] = useState('');
+  const [startDate, setStartDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [saving, setSaving] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
@@ -73,7 +77,8 @@ const ManageInvestmentsScreen = () => {
     setPrincipal('');
     setCurrentValue('');
     setReturnRate('');
-    setStartDate('');
+    setStartDate(new Date());
+    setShowDatePicker(false);
     setModalVisible(true);
   };
 
@@ -81,16 +86,36 @@ const ManageInvestmentsScreen = () => {
     setEditing(inv);
     setName(inv.name);
     setType(inv.type);
-    setPrincipal(inv.principal.toString());
-    setCurrentValue(inv.currentValue.toString());
+    setPrincipal(formatCurrencyInput(String(Math.round(inv.principal * 100))));
+    setCurrentValue(formatCurrencyInput(String(Math.round(inv.currentValue * 100))));
     setReturnRate(inv.returnRate.toString());
-    setStartDate(inv.startDate);
+    setStartDate(inv.startDate ? new Date(inv.startDate + 'T00:00:00') : new Date());
+    setShowDatePicker(false);
     setModalVisible(true);
   };
 
+  const toISODate = (d: Date): string => {
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${year}-${month}-${day}`;
+  };
+
+  const formatDateDisplay = (d: Date): string => {
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  const handleDateChange = (_event: DateTimePickerEvent, selectedDate?: Date) => {
+    if (Platform.OS === 'android') setShowDatePicker(false);
+    if (selectedDate) setStartDate(selectedDate);
+  };
+
   const handleSave = async () => {
-    const principalNum = parseAmount(principal);
-    const currentNum = parseAmount(currentValue);
+    const principalNum = parseCurrencyInput(principal);
+    const currentNum = parseCurrencyInput(currentValue);
     const rateNum = parseAmount(returnRate);
     if (!name.trim() || principalNum <= 0) return;
     setSaving(true);
@@ -102,7 +127,7 @@ const ManageInvestmentsScreen = () => {
           principal: principalNum,
           currentValue: currentNum || principalNum,
           returnRate: rateNum,
-          startDate,
+          startDate: toISODate(startDate),
         });
       } else {
         await addInvestment({
@@ -111,7 +136,7 @@ const ManageInvestmentsScreen = () => {
           principal: principalNum,
           currentValue: currentNum || principalNum,
           returnRate: rateNum,
-          startDate: startDate || new Date().toISOString().split('T')[0],
+          startDate: toISODate(startDate),
         });
       }
       setModalVisible(false);
@@ -157,7 +182,7 @@ const ManageInvestmentsScreen = () => {
                 </View>
                 <View>
                   <Text style={styles.balanceLabel}>Rendimento</Text>
-                  <Text style={[styles.balanceValue, { color: '#86efac' }]}>+{mv(totalReturn)}</Text>
+                  <Text style={[styles.balanceValue, { color: '#93c5fd' }]}>+{mv(totalReturn)}</Text>
                 </View>
               </View>
             </BalanceCard>
@@ -254,15 +279,37 @@ const ManageInvestmentsScreen = () => {
 
         <View style={styles.rowInputs}>
           <View style={{ flex: 1 }}>
-            <InputField label="Capital investido" value={principal} onChangeText={setPrincipal} placeholder="8000" keyboardType="numeric" />
+            <CurrencyInput label="Capital investido" value={principal} onChangeText={setPrincipal} />
           </View>
           <View style={{ flex: 1 }}>
-            <InputField label="Valor atual" value={currentValue} onChangeText={setCurrentValue} placeholder="8450" keyboardType="numeric" />
+            <CurrencyInput label="Valor atual" value={currentValue} onChangeText={setCurrentValue} />
           </View>
         </View>
 
         <InputField label="Taxa de retorno (% a.a.)" value={returnRate} onChangeText={setReturnRate} placeholder="12.5" keyboardType="numeric" />
-        <InputField label="Data de início (AAAA-MM-DD)" value={startDate} onChangeText={setStartDate} placeholder="2024-06-01" />
+
+        <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Data de início</Text>
+        <TouchableOpacity
+          style={[styles.dateBtn, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}
+          onPress={() => setShowDatePicker(true)}
+        >
+          <Ionicons name="calendar-outline" size={18} color={colors.textSecondary} />
+          <Text style={[styles.dateBtnText, { color: colors.text }]}>{formatDateDisplay(startDate)}</Text>
+        </TouchableOpacity>
+        {showDatePicker && (
+          <DateTimePicker
+            value={startDate}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={handleDateChange}
+            locale="pt-BR"
+          />
+        )}
+        {showDatePicker && Platform.OS === 'ios' && (
+          <TouchableOpacity style={[styles.dateConfirm, { backgroundColor: colors.primary }]} onPress={() => setShowDatePicker(false)}>
+            <Text style={styles.dateConfirmText}>Confirmar</Text>
+          </TouchableOpacity>
+        )}
       </FormModal>
 
       {/* Delete Dialog */}
@@ -325,6 +372,10 @@ const styles = StyleSheet.create({
   },
   typeChipText: { fontSize: 13, fontWeight: '500' },
   rowInputs: { flexDirection: 'row', gap: 12 },
+  dateBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, height: 48, borderRadius: 12, paddingHorizontal: 16, borderWidth: 1, marginBottom: 16 },
+  dateBtnText: { fontSize: 15, fontWeight: '500' },
+  dateConfirm: { alignSelf: 'flex-end', paddingHorizontal: 20, paddingVertical: 8, borderRadius: 10, marginBottom: 12 },
+  dateConfirmText: { color: '#fff', fontSize: 14, fontWeight: '600' },
 });
 
 export default ManageInvestmentsScreen;

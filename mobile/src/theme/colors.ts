@@ -1,6 +1,6 @@
 export const Colors = {
   light: {
-    primary: '#16a34a',
+    primary: '#2563eb',
     primaryForeground: '#ffffff',
     background: '#f8fafc',
     surface: '#ffffff',
@@ -15,8 +15,8 @@ export const Colors = {
     destructive: '#dc2626',
     destructiveBg: '#fef2f2',
     mutedBg: '#f1f5f9',
-    cardGradientStart: '#16a34a',
-    cardGradientEnd: '#059669',
+    cardGradientStart: '#2563eb',
+    cardGradientEnd: '#1d4ed8',
     tabBarBg: '#ffffff',
     tabBarBorder: '#e2e8f0',
     inputBg: '#f1f5f9',
@@ -24,7 +24,7 @@ export const Colors = {
     overlay: 'rgba(0, 0, 0, 0.5)',
   },
   dark: {
-    primary: '#22c55e',
+    primary: '#3b82f6',
     primaryForeground: '#ffffff',
     background: '#0f172a',
     surface: '#1e293b',
@@ -39,8 +39,8 @@ export const Colors = {
     destructive: '#ef4444',
     destructiveBg: '#450a0a',
     mutedBg: '#1e293b',
-    cardGradientStart: '#16a34a',
-    cardGradientEnd: '#059669',
+    cardGradientStart: '#2563eb',
+    cardGradientEnd: '#1d4ed8',
     tabBarBg: '#1e293b',
     tabBarBorder: '#334155',
     inputBg: '#1e293b',

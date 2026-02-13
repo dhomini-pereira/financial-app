@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS accounts (
   name VARCHAR(255) NOT NULL,
   type VARCHAR(50) NOT NULL CHECK (type IN ('wallet', 'checking', 'digital', 'investment')),
   balance DECIMAL(15,2) DEFAULT 0,
-  color VARCHAR(20) DEFAULT '#16a34a',
+  color VARCHAR(20) DEFAULT '#2563eb',
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   date DATE NOT NULL DEFAULT CURRENT_DATE,
   recurring BOOLEAN DEFAULT false,
   recurrence VARCHAR(20) CHECK (recurrence IN ('daily', 'weekly', 'monthly', 'yearly')),
+  next_due_date DATE,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -97,3 +98,16 @@ CREATE TABLE IF NOT EXISTS goals (
 );
 
 CREATE INDEX IF NOT EXISTS idx_goals_user ON goals(user_id);
+
+-- Migrations incrementais (safe para re-execução)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'transactions' AND column_name = 'next_due_date'
+  ) THEN
+    ALTER TABLE transactions ADD COLUMN next_due_date DATE;
+  END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_transactions_recurring ON transactions(recurring, next_due_date) WHERE recurring = true;

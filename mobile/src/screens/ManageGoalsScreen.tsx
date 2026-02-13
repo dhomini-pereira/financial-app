@@ -7,19 +7,22 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFinanceStore } from '@/store/useFinanceStore';
-import { formatCurrency, maskValue, formatDate } from '@/lib/finance';
+import { formatCurrency, maskValue, formatDate, parseCurrencyInput, formatCurrencyInput } from '@/lib/finance';
 import StatCard from '@/components/StatCard';
 import BalanceCard from '@/components/BalanceCard';
 import ProgressBar from '@/components/ProgressBar';
 import InputField from '@/components/InputField';
+import CurrencyInput from '@/components/CurrencyInput';
 import FormModal from '@/components/FormModal';
 import ConfirmDialog from '@/components/ConfirmDialog';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import type { Goal } from '@/types/finance';
 
 const emojiOptions = ['🎯', '🛡️', '✈️', '💻', '🏠', '🚗', '💍', '🎓', '💰', '🏖️', '🎮', '💎'];
@@ -52,7 +55,8 @@ const ManageGoalsScreen = () => {
   const [icon, setIcon] = useState('🎯');
   const [targetAmount, setTargetAmount] = useState('');
   const [currentAmount, setCurrentAmount] = useState('');
-  const [deadline, setDeadline] = useState('');
+  const [deadline, setDeadline] = useState<Date | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [saving, setSaving] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
@@ -72,7 +76,8 @@ const ManageGoalsScreen = () => {
     setIcon('🎯');
     setTargetAmount('');
     setCurrentAmount('');
-    setDeadline('');
+    setDeadline(null);
+    setShowDatePicker(false);
     setModalVisible(true);
   };
 
@@ -80,22 +85,42 @@ const ManageGoalsScreen = () => {
     setEditing(goal);
     setName(goal.name);
     setIcon(goal.icon);
-    setTargetAmount(goal.targetAmount.toString());
-    setCurrentAmount(goal.currentAmount.toString());
-    setDeadline(goal.deadline);
+    setTargetAmount(formatCurrencyInput(String(Math.round(goal.targetAmount * 100))));
+    setCurrentAmount(formatCurrencyInput(String(Math.round(goal.currentAmount * 100))));
+    setDeadline(goal.deadline ? new Date(goal.deadline + 'T00:00:00') : null);
+    setShowDatePicker(false);
     setModalVisible(true);
   };
 
+  const toISODate = (d: Date): string => {
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${year}-${month}-${day}`;
+  };
+
+  const formatDateDisplay = (d: Date): string => {
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  const handleDeadlineDateChange = (_event: DateTimePickerEvent, selectedDate?: Date) => {
+    if (Platform.OS === 'android') setShowDatePicker(false);
+    if (selectedDate) setDeadline(selectedDate);
+  };
+
   const handleSave = async () => {
-    const target = parseAmount(targetAmount);
-    const current = parseAmount(currentAmount);
+    const target = parseCurrencyInput(targetAmount);
+    const current = parseCurrencyInput(currentAmount);
     if (!name.trim() || target <= 0) return;
     setSaving(true);
     try {
       if (editing) {
-        await updateGoal(editing.id, { name, icon, targetAmount: target, currentAmount: current, deadline });
+        await updateGoal(editing.id, { name, icon, targetAmount: target, currentAmount: current, deadline: deadline ? toISODate(deadline) : '' });
       } else {
-        await addGoal({ name, icon, targetAmount: target, currentAmount: current, deadline });
+        await addGoal({ name, icon, targetAmount: target, currentAmount: current, deadline: deadline ? toISODate(deadline) : '' });
       }
       setModalVisible(false);
     } catch (err: any) {
@@ -234,19 +259,45 @@ const ManageGoalsScreen = () => {
 
         <View style={styles.rowInputs}>
           <View style={{ flex: 1 }}>
-            <InputField label="Valor da Meta" value={targetAmount} onChangeText={setTargetAmount} placeholder="30000" keyboardType="numeric" />
+            <CurrencyInput label="Valor da Meta" value={targetAmount} onChangeText={setTargetAmount} />
           </View>
           <View style={{ flex: 1 }}>
-            <InputField label="Valor Atual" value={currentAmount} onChangeText={setCurrentAmount} placeholder="5000" keyboardType="numeric" />
+            <CurrencyInput label="Valor Atual" value={currentAmount} onChangeText={setCurrentAmount} />
           </View>
         </View>
 
-        <InputField
-          label="Prazo (AAAA-MM-DD)"
-          value={deadline}
-          onChangeText={setDeadline}
-          placeholder="2026-12-31"
-        />
+        <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Prazo</Text>
+        <TouchableOpacity
+          style={[styles.dateBtn, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}
+          onPress={() => {
+            if (!deadline) setDeadline(new Date());
+            setShowDatePicker(true);
+          }}
+        >
+          <Ionicons name="calendar-outline" size={18} color={colors.textSecondary} />
+          <Text style={[styles.dateBtnText, { color: deadline ? colors.text : colors.textMuted }]}>
+            {deadline ? formatDateDisplay(deadline) : 'Selecionar prazo'}
+          </Text>
+        </TouchableOpacity>
+        {deadline && (
+          <TouchableOpacity onPress={() => setDeadline(null)} style={{ marginBottom: 8 }}>
+            <Text style={{ color: colors.destructive, fontSize: 12, textAlign: 'right' }}>Remover prazo</Text>
+          </TouchableOpacity>
+        )}
+        {showDatePicker && (
+          <DateTimePicker
+            value={deadline || new Date()}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={handleDeadlineDateChange}
+            locale="pt-BR"
+          />
+        )}
+        {showDatePicker && Platform.OS === 'ios' && (
+          <TouchableOpacity style={[styles.dateConfirm, { backgroundColor: colors.primary }]} onPress={() => setShowDatePicker(false)}>
+            <Text style={styles.dateConfirmText}>Confirmar</Text>
+          </TouchableOpacity>
+        )}
       </FormModal>
 
       {/* Delete Dialog */}
@@ -307,6 +358,10 @@ const styles = StyleSheet.create({
   emojiBtn: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   emojiText: { fontSize: 22 },
   rowInputs: { flexDirection: 'row', gap: 12 },
+  dateBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, height: 48, borderRadius: 12, paddingHorizontal: 16, borderWidth: 1, marginBottom: 16 },
+  dateBtnText: { fontSize: 15, fontWeight: '500' },
+  dateConfirm: { alignSelf: 'flex-end', paddingHorizontal: 20, paddingVertical: 8, borderRadius: 10, marginBottom: 12 },
+  dateConfirmText: { color: '#fff', fontSize: 14, fontWeight: '600' },
 });
 
 export default ManageGoalsScreen;

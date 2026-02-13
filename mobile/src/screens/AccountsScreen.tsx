@@ -13,11 +13,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFinanceStore } from '@/store/useFinanceStore';
-import { formatCurrency, maskValue, accountTypeLabel, accountTypeIcon } from '@/lib/finance';
+import { formatCurrency, maskValue, accountTypeLabel, accountTypeIcon, parseCurrencyInput, formatCurrencyInput } from '@/lib/finance';
 import ScreenHeader from '@/components/ScreenHeader';
 import BalanceCard from '@/components/BalanceCard';
 import StatCard from '@/components/StatCard';
 import InputField from '@/components/InputField';
+import CurrencyInput from '@/components/CurrencyInput';
 import FormModal from '@/components/FormModal';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import PillButton from '@/components/PillButton';
@@ -28,7 +29,7 @@ const colorOptions = [
   { value: '#8b5cf6', label: 'Roxo' },
   { value: '#f97316', label: 'Laranja' },
   { value: '#0ea5e9', label: 'Azul' },
-  { value: '#16a34a', label: 'Verde' },
+  { value: '#2563eb', label: 'Azul Escuro' },
   { value: '#ec4899', label: 'Rosa' },
   { value: '#ef4444', label: 'Vermelho' },
   { value: '#06b6d4', label: 'Ciano' },
@@ -92,13 +93,13 @@ const AccountsScreen = () => {
     setEditing(account);
     setName(account.name);
     setType(account.type);
-    setBalance(account.balance.toString().replace('.', ','));
+    setBalance(formatCurrencyInput(String(Math.round(account.balance * 100))));
     setColor(account.color);
     setModalVisible(true);
   };
 
   const handleSave = async () => {
-    const balanceNum = parseAmount(balance);
+    const balanceNum = parseCurrencyInput(balance);
     if (!name.trim()) return;
     setSaving(true);
     try {
@@ -213,12 +214,10 @@ const AccountsScreen = () => {
         saveLabel={saving ? '...' : editing ? 'Salvar' : 'Adicionar'}
       >
         <InputField label="Nome" value={name} onChangeText={setName} placeholder="Ex: Nubank" />
-        <InputField
+        <CurrencyInput
           label="Saldo"
           value={balance}
           onChangeText={setBalance}
-          placeholder="0,00"
-          keyboardType="numeric"
         />
         <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Tipo de conta</Text>
         <View style={styles.chipRow}>

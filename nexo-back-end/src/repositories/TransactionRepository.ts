@@ -33,14 +33,15 @@ export class TransactionRepository {
       date: string;
       recurring: boolean;
       recurrence?: string | null;
+      next_due_date?: string | null;
     },
     client?: any
   ): Promise<Transaction> {
     const db = client || this.pool;
     const { rows } = await db.query(
-      `INSERT INTO transactions (user_id, account_id, category_id, description, amount, type, date, recurring, recurrence)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
-      [userId, data.account_id, data.category_id, data.description, data.amount, data.type, data.date, data.recurring, data.recurrence ?? null]
+      `INSERT INTO transactions (user_id, account_id, category_id, description, amount, type, date, recurring, recurrence, next_due_date)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+      [userId, data.account_id, data.category_id, data.description, data.amount, data.type, data.date, data.recurring, data.recurrence ?? null, data.next_due_date ?? null]
     );
     return rows[0];
   }
@@ -48,6 +49,7 @@ export class TransactionRepository {
   async update(id: string, userId: string, data: Partial<{
     description: string; amount: number; type: string; category_id: string;
     account_id: string; date: string; recurring: boolean; recurrence: string | null;
+    next_due_date: string | null;
   }>): Promise<Transaction | null> {
     const fields: string[] = [];
     const values: any[] = [];
@@ -75,5 +77,23 @@ export class TransactionRepository {
       [id, userId]
     );
     return rows[0] ?? null;
+  }
+
+  /** Busca todas as transações recorrentes cuja next_due_date <= hoje */
+  async findDueRecurring(today: string): Promise<Transaction[]> {
+    const { rows } = await this.pool.query(
+      `SELECT * FROM transactions WHERE recurring = true AND next_due_date IS NOT NULL AND next_due_date <= $1`,
+      [today]
+    );
+    return rows;
+  }
+
+  /** Atualiza o next_due_date de uma transação recorrente (sem filtro de user) */
+  async updateNextDueDate(id: string, nextDueDate: string, client?: any): Promise<void> {
+    const db = client || this.pool;
+    await db.query(
+      'UPDATE transactions SET next_due_date = $1 WHERE id = $2',
+      [nextDueDate, id]
+    );
   }
 }

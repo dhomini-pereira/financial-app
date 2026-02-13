@@ -6,7 +6,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   TextInput,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,6 +19,7 @@ import { formatCurrency, maskValue, formatDateShort } from '@/lib/finance';
 import ScreenHeader from '@/components/ScreenHeader';
 import StatCard from '@/components/StatCard';
 import PillButton from '@/components/PillButton';
+import ConfirmDialog from '@/components/ConfirmDialog';
 import type { RootStackParamList } from '@/navigation';
 
 const PAGE_SIZE = 10;
@@ -32,6 +32,8 @@ const TransactionsScreen = () => {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'income' | 'expense'>('all');
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteVisible, setDeleteVisible] = useState(false);
+  const [toDelete, setToDelete] = useState<{ id: string; desc: string } | null>(null);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const mv = (v: number) => maskValue(privacyMode, formatCurrency(v));
@@ -56,23 +58,22 @@ const TransactionsScreen = () => {
   }, [filtered.length]);
 
   const handleDelete = (id: string, desc: string) => {
-    Alert.alert('Excluir transação', `Deseja excluir "${desc}"?`, [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Excluir',
-        style: 'destructive',
-        onPress: async () => {
-          setDeletingId(id);
-          try {
-            await deleteTransaction(id);
-          } catch (err: any) {
-            Alert.alert('Erro', err.message || 'Falha ao excluir transação.');
-          } finally {
-            setDeletingId(null);
-          }
-        },
-      },
-    ]);
+    setToDelete({ id, desc });
+    setDeleteVisible(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!toDelete) return;
+    setDeleteVisible(false);
+    setDeletingId(toDelete.id);
+    try {
+      await deleteTransaction(toDelete.id);
+    } catch {
+      // silently handle
+    } finally {
+      setDeletingId(null);
+      setToDelete(null);
+    }
   };
 
   return (
@@ -173,6 +174,17 @@ const TransactionsScreen = () => {
       >
         <Ionicons name="add" size={28} color="#fff" />
       </TouchableOpacity>
+
+      {/* Delete Dialog */}
+      <ConfirmDialog
+        visible={deleteVisible}
+        onClose={() => { setDeleteVisible(false); setToDelete(null); }}
+        onConfirm={confirmDelete}
+        title="Excluir transação"
+        message={`Deseja excluir "${toDelete?.desc}"? Esta ação não pode ser desfeita.`}
+        confirmLabel="Excluir"
+        destructive
+      />
     </SafeAreaView>
   );
 };

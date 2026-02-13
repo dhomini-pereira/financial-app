@@ -38,7 +38,8 @@
         {
           "faceIDPermission": "Permite acesso rápido ao app com Face ID"
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "extra": {
       "eas": {
