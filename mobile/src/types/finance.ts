@@ -32,6 +32,8 @@ export interface Transaction {
   nextDueDate?: string | null;
   recurrenceCount?: number | null;
   recurrenceCurrent?: number;
+  recurrenceGroupId?: string | null;
+  recurrencePaused?: boolean;
 }
 
 export interface Investment {

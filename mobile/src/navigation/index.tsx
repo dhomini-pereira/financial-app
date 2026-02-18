@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFinanceStore } from '@/store/useFinanceStore';
+import { registerForPushNotifications } from '@/services/notifications';
 
 import LoginScreen from '@/screens/LoginScreen';
 import BiometricLockScreen from '@/screens/BiometricLockScreen';
@@ -21,6 +22,7 @@ import ManageInvestmentsScreen from '@/screens/ManageInvestmentsScreen';
 import ProfileScreen from '@/screens/ProfileScreen';
 import TransactionFormScreen from '@/screens/TransactionFormScreen';
 import TransferScreen from '@/screens/TransferScreen';
+import ManageRecurrencesScreen from '@/screens/ManageRecurrencesScreen';
 
 export type RootStackParamList = {
   Login: undefined;
@@ -28,6 +30,7 @@ export type RootStackParamList = {
   ManageGoals: undefined;
   ManageCategories: undefined;
   ManageInvestments: undefined;
+  ManageRecurrences: undefined;
   Profile: undefined;
   TransactionForm: { transactionId?: string } | undefined;
   Transfer: undefined;
@@ -172,6 +175,7 @@ const AppNavigation = () => {
   useEffect(() => {
     if (isAuthenticated) {
       fetchAll();
+      registerForPushNotifications();
     } else {
       reset();
     }
@@ -249,6 +253,11 @@ const AppNavigation = () => {
               name="ManageInvestments"
               component={ManageInvestmentsScreen}
               options={{ title: 'Gerenciar Investimentos' }}
+            />
+            <Stack.Screen
+              name="ManageRecurrences"
+              component={ManageRecurrencesScreen}
+              options={{ title: 'Recorrências' }}
             />
             <Stack.Screen
               name="Profile"

@@ -62,6 +62,7 @@ const ManageInvestmentsScreen = () => {
   const [startDate, setStartDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const displayed = useMemo(() => investments.slice(0, visibleCount), [investments, visibleCount]);
@@ -154,12 +155,15 @@ const ManageInvestmentsScreen = () => {
 
   const handleDelete = async () => {
     if (toDelete) {
+      setDeleting(true);
       try {
         await deleteInvestment(toDelete.id);
         setDeleteVisible(false);
         setToDelete(null);
       } catch (err: any) {
         Alert.alert('Erro', err.message || 'Falha ao excluir investimento.');
+      } finally {
+        setDeleting(false);
       }
     }
   };
@@ -321,6 +325,7 @@ const ManageInvestmentsScreen = () => {
         message={`Deseja excluir "${toDelete?.name}"? Esta ação não pode ser desfeita.`}
         confirmLabel="Excluir"
         destructive
+        loading={deleting}
       />
     </SafeAreaView>
   );

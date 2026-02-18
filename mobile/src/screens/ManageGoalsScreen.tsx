@@ -58,6 +58,7 @@ const ManageGoalsScreen = () => {
   const [deadline, setDeadline] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const displayed = useMemo(() => goals.slice(0, visibleCount), [goals, visibleCount]);
@@ -137,12 +138,15 @@ const ManageGoalsScreen = () => {
 
   const handleDelete = async () => {
     if (toDelete) {
+      setDeleting(true);
       try {
         await deleteGoal(toDelete.id);
         setDeleteVisible(false);
         setToDelete(null);
       } catch (err: any) {
         Alert.alert('Erro', err.message || 'Falha ao excluir meta.');
+      } finally {
+        setDeleting(false);
       }
     }
   };
@@ -309,6 +313,7 @@ const ManageGoalsScreen = () => {
         message={`Deseja excluir "${toDelete?.name}"? Esta ação não pode ser desfeita.`}
         confirmLabel="Excluir"
         destructive
+        loading={deleting}
       />
     </SafeAreaView>
   );

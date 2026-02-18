@@ -135,3 +135,38 @@ END $$;
 
 -- Índice para buscas por range de datas (filtros de gastos)
 CREATE INDEX IF NOT EXISTS idx_transactions_date_only ON transactions(date);
+
+-- Coluna para agrupar transações geradas por uma recorrência
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'transactions' AND column_name = 'recurrence_group_id'
+  ) THEN
+    ALTER TABLE transactions ADD COLUMN recurrence_group_id UUID;
+  END IF;
+END $$;
+
+-- Coluna para pausar recorrência sem apagar
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'transactions' AND column_name = 'recurrence_paused'
+  ) THEN
+    ALTER TABLE transactions ADD COLUMN recurrence_paused BOOLEAN DEFAULT false;
+  END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_transactions_group ON transactions(recurrence_group_id) WHERE recurrence_group_id IS NOT NULL;
+
+-- Push notification tokens
+CREATE TABLE IF NOT EXISTS push_tokens (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, token)
+);
+
+CREATE INDEX IF NOT EXISTS idx_push_tokens_user ON push_tokens(user_id);

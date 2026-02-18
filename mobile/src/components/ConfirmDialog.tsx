@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Pressable,
+  ActivityIndicator,
 } from 'react-native';
 import { useTheme } from '@/theme/ThemeProvider';
 
@@ -17,6 +18,7 @@ interface ConfirmDialogProps {
   message: string;
   confirmLabel?: string;
   destructive?: boolean;
+  loading?: boolean;
 }
 
 const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
@@ -27,6 +29,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   message,
   confirmLabel = 'Confirmar',
   destructive = false,
+  loading = false,
 }) => {
   const { colors } = useTheme();
 
@@ -43,19 +46,26 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             <TouchableOpacity
               style={[styles.btn, { backgroundColor: colors.mutedBg }]}
               onPress={onClose}
+              disabled={loading}
             >
-              <Text style={[styles.btnText, { color: colors.textSecondary }]}>Cancelar</Text>
+              <Text style={[styles.btnText, { color: colors.textSecondary, opacity: loading ? 0.5 : 1 }]}>Cancelar</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[
                 styles.btn,
                 {
                   backgroundColor: destructive ? colors.destructive : colors.primary,
+                  opacity: loading ? 0.8 : 1,
                 },
               ]}
               onPress={onConfirm}
+              disabled={loading}
             >
-              <Text style={[styles.btnText, { color: '#fff' }]}>{confirmLabel}</Text>
+              {loading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={[styles.btnText, { color: '#fff' }]}>{confirmLabel}</Text>
+              )}
             </TouchableOpacity>
           </View>
         </Pressable>

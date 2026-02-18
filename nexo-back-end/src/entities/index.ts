@@ -41,6 +41,15 @@ export interface Transaction {
   next_due_date: string | null;
   recurrence_count: number | null;
   recurrence_current: number;
+  recurrence_group_id: string | null;
+  recurrence_paused: boolean;
+  created_at: Date;
+}
+
+export interface PushToken {
+  id: string;
+  user_id: string;
+  token: string;
   created_at: Date;
 }
 
@@ -112,6 +121,8 @@ export interface TransactionDTO {
   nextDueDate: string | null;
   recurrenceCount: number | null;
   recurrenceCurrent: number;
+  recurrenceGroupId: string | null;
+  recurrencePaused: boolean;
 }
 
 export interface InvestmentDTO {

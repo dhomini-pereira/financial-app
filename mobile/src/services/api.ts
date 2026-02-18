@@ -180,6 +180,12 @@ export const transactionsApi = {
     request<any>(`/transactions/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   delete: (id: string) =>
     request(`/transactions/${id}`, { method: 'DELETE' }),
+  getChildren: (parentId: string) =>
+    request<any[]>(`/transactions/${parentId}/children`),
+  togglePause: (id: string, paused: boolean) =>
+    request<any>(`/transactions/${id}/pause`, { method: 'PUT', body: JSON.stringify({ paused }) }),
+  deleteRecurrence: (id: string) =>
+    request(`/transactions/${id}/recurrence`, { method: 'DELETE' }),
 };
 
 // ===== TRANSFERS =====
@@ -219,4 +225,12 @@ export const goalsApi = {
     request<any>(`/goals/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   delete: (id: string) =>
     request(`/goals/${id}`, { method: 'DELETE' }),
+};
+
+// ===== PUSH TOKENS =====
+export const pushTokenApi = {
+  register: (token: string) =>
+    request('/push-token', { method: 'POST', body: JSON.stringify({ token }) }),
+  remove: (token: string) =>
+    request('/push-token', { method: 'DELETE', body: JSON.stringify({ token }) }),
 };

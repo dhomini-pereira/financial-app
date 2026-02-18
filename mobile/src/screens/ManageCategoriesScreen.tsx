@@ -36,6 +36,8 @@ const ManageCategoriesScreen = () => {
   const [deleteVisible, setDeleteVisible] = useState(false);
   const [editing, setEditing] = useState<Category | null>(null);
   const [toDelete, setToDelete] = useState<Category | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const [name, setName] = useState('');
   const [icon, setIcon] = useState('📋');
@@ -76,12 +78,19 @@ const ManageCategoriesScreen = () => {
 
   const handleSave = async () => {
     if (!name.trim()) return;
-    if (editing) {
-      await updateCategory(editing.id, { name, icon, type });
-    } else {
-      await addCategory({ name, icon, type });
+    setSaving(true);
+    try {
+      if (editing) {
+        await updateCategory(editing.id, { name, icon, type });
+      } else {
+        await addCategory({ name, icon, type });
+      }
+      setModalVisible(false);
+    } catch (err: any) {
+      Alert.alert('Erro', err.message || 'Falha ao salvar categoria.');
+    } finally {
+      setSaving(false);
     }
-    setModalVisible(false);
   };
 
   const confirmDelete = (cat: Category) => {
@@ -91,6 +100,7 @@ const ManageCategoriesScreen = () => {
 
   const handleDelete = async () => {
     if (toDelete) {
+      setDeleting(true);
       try {
         await deleteCategory(toDelete.id);
         setDeleteVisible(false);
@@ -98,6 +108,8 @@ const ManageCategoriesScreen = () => {
       } catch {
         setDeleteVisible(false);
         Alert.alert('Erro', 'Não foi possível excluir a categoria.');
+      } finally {
+        setDeleting(false);
       }
     }
   };
@@ -194,6 +206,7 @@ const ManageCategoriesScreen = () => {
         title={editing ? 'Editar Categoria' : 'Nova Categoria'}
         onSave={handleSave}
         saveLabel={editing ? 'Salvar' : 'Adicionar'}
+        saving={saving}
       >
         <InputField label="Nome" value={name} onChangeText={setName} placeholder="Ex: Alimentação" />
 
@@ -241,6 +254,7 @@ const ManageCategoriesScreen = () => {
         message={`Deseja excluir "${toDelete?.name}"? Transações com esta categoria não serão afetadas.`}
         confirmLabel="Excluir"
         destructive
+        loading={deleting}
       />
     </SafeAreaView>
   );

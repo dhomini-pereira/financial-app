@@ -36,14 +36,15 @@ export class TransactionRepository {
       next_due_date?: string | null;
       recurrence_count?: number | null;
       recurrence_current?: number;
+      recurrence_group_id?: string | null;
     },
     client?: any
   ): Promise<Transaction> {
     const db = client || this.pool;
     const { rows } = await db.query(
-      `INSERT INTO transactions (user_id, account_id, category_id, description, amount, type, date, recurring, recurrence, next_due_date, recurrence_count, recurrence_current)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
-      [userId, data.account_id, data.category_id, data.description, data.amount, data.type, data.date, data.recurring, data.recurrence ?? null, data.next_due_date ?? null, data.recurrence_count ?? null, data.recurrence_current ?? 0]
+      `INSERT INTO transactions (user_id, account_id, category_id, description, amount, type, date, recurring, recurrence, next_due_date, recurrence_count, recurrence_current, recurrence_group_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
+      [userId, data.account_id, data.category_id, data.description, data.amount, data.type, data.date, data.recurring, data.recurrence ?? null, data.next_due_date ?? null, data.recurrence_count ?? null, data.recurrence_current ?? 0, data.recurrence_group_id ?? null]
     );
     return rows[0];
   }
@@ -51,7 +52,7 @@ export class TransactionRepository {
   async update(id: string, userId: string, data: Partial<{
     description: string; amount: number; type: string; category_id: string;
     account_id: string; date: string; recurring: boolean; recurrence: string | null;
-    next_due_date: string | null;
+    next_due_date: string | null; recurrence_paused: boolean;
   }>): Promise<Transaction | null> {
     const fields: string[] = [];
     const values: any[] = [];
@@ -81,11 +82,20 @@ export class TransactionRepository {
     return rows[0] ?? null;
   }
 
-  /** Busca todas as transações recorrentes cuja next_due_date <= hoje */
+  /** Busca todas as transações recorrentes cuja next_due_date <= hoje (não pausadas) */
   async findDueRecurring(today: string): Promise<Transaction[]> {
     const { rows } = await this.pool.query(
-      `SELECT * FROM transactions WHERE recurring = true AND next_due_date IS NOT NULL AND next_due_date <= $1`,
+      `SELECT * FROM transactions WHERE recurring = true AND next_due_date IS NOT NULL AND next_due_date <= $1 AND (recurrence_paused IS NULL OR recurrence_paused = false)`,
       [today]
+    );
+    return rows;
+  }
+
+  /** Busca transações filhas geradas por uma recorrência (group_id = parentId) */
+  async findByGroupId(parentId: string, userId: string): Promise<Transaction[]> {
+    const { rows } = await this.pool.query(
+      'SELECT * FROM transactions WHERE recurrence_group_id = $1 AND user_id = $2 ORDER BY date ASC',
+      [parentId, userId]
     );
     return rows;
   }

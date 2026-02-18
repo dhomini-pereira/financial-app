@@ -165,6 +165,13 @@ const MoreScreen = () => {
             iconColor={colors.income}
           />
           <MenuItem
+            icon="repeat-outline"
+            label="Recorrências"
+            onPress={() => navigation.navigate('ManageRecurrences')}
+            colors={colors}
+            iconColor="#f59e0b"
+          />
+          <MenuItem
             icon="swap-horizontal-outline"
             label="Transferência entre contas"
             onPress={() => navigation.navigate('Transfer')}

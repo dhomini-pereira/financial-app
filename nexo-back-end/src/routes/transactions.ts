@@ -55,4 +55,40 @@ export async function transactionRoutes(app: FastifyInstance) {
       return reply.status(err.statusCode || 500).send({ message: err.message });
     }
   });
+
+  // ========== RECURRENCE MANAGEMENT ==========
+
+  /** Lista as transações filhas de uma recorrência */
+  app.get('/transactions/:id/children', async (request, reply) => {
+    const { id } = request.params as any;
+    try {
+      const children = await service.getRecurrenceChildren(id, request.userId);
+      return reply.send(children);
+    } catch (err: any) {
+      return reply.status(err.statusCode || 500).send({ message: err.message });
+    }
+  });
+
+  /** Pausa/despausa uma recorrência */
+  app.put('/transactions/:id/pause', async (request, reply) => {
+    const { id } = request.params as any;
+    const { paused } = request.body as any;
+    try {
+      const tx = await service.toggleRecurrencePause(id, request.userId, paused);
+      return reply.send(tx);
+    } catch (err: any) {
+      return reply.status(err.statusCode || 500).send({ message: err.message });
+    }
+  });
+
+  /** Exclui uma recorrência e todo o seu histórico */
+  app.delete('/transactions/:id/recurrence', async (request, reply) => {
+    const { id } = request.params as any;
+    try {
+      await service.deleteRecurrenceWithHistory(id, request.userId);
+      return reply.status(204).send();
+    } catch (err: any) {
+      return reply.status(err.statusCode || 500).send({ message: err.message });
+    }
+  });
 }

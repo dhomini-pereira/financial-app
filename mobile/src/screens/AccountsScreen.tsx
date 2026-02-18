@@ -67,6 +67,7 @@ const AccountsScreen = () => {
   const [editing, setEditing] = useState<Account | null>(null);
   const [toDelete, setToDelete] = useState<Account | null>(null);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const displayed = useMemo(() => accounts.slice(0, visibleCount), [accounts, visibleCount]);
@@ -123,12 +124,15 @@ const AccountsScreen = () => {
 
   const handleDelete = async () => {
     if (!toDelete) return;
+    setDeleting(true);
     try {
       await deleteAccount(toDelete.id);
       setDeleteVisible(false);
       setToDelete(null);
     } catch (err: any) {
       Alert.alert('Erro', err.message || 'Falha ao excluir conta.');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -211,7 +215,8 @@ const AccountsScreen = () => {
         onClose={() => setModalVisible(false)}
         title={editing ? 'Editar Conta' : 'Nova Conta'}
         onSave={handleSave}
-        saveLabel={saving ? '...' : editing ? 'Salvar' : 'Adicionar'}
+        saveLabel={editing ? 'Salvar' : 'Adicionar'}
+        saving={saving}
       >
         <InputField label="Nome" value={name} onChangeText={setName} placeholder="Ex: Nubank" />
         <CurrencyInput
@@ -245,6 +250,7 @@ const AccountsScreen = () => {
         message={`Deseja excluir "${toDelete?.name}"? Esta ação não pode ser desfeita.`}
         confirmLabel="Excluir"
         destructive
+        loading={deleting}
       />
     </SafeAreaView>
   );

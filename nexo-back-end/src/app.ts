@@ -8,6 +8,7 @@ import { categoryRoutes } from './routes/categories';
 import { investmentRoutes } from './routes/investments';
 import { goalRoutes } from './routes/goals';
 import { cronRoutes } from './routes/cron';
+import { pushTokenRoutes } from './routes/pushTokens';
 
 export async function buildApp() {
   const app = Fastify({
@@ -27,6 +28,7 @@ export async function buildApp() {
   await app.register(investmentRoutes);
   await app.register(goalRoutes);
   await app.register(cronRoutes);
+  await app.register(pushTokenRoutes);
 
   // Health check
   app.get('/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }));

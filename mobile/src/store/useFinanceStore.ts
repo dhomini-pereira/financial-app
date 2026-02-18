@@ -38,6 +38,11 @@ interface FinanceState {
   addTransaction: (data: Omit<Transaction, 'id'>) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
 
+  // Recurrence management
+  getRecurrenceChildren: (parentId: string) => Promise<Transaction[]>;
+  toggleRecurrencePause: (id: string, paused: boolean) => Promise<void>;
+  deleteRecurrenceWithHistory: (id: string) => Promise<void>;
+
   // Transfer
   transfer: (fromId: string, toId: string, amount: number, description?: string) => Promise<void>;
 
@@ -156,6 +161,44 @@ export const useFinanceStore = create<FinanceState>()((set, get) => ({
       set({ actionLoading: true });
       await transfersApi.create({ fromAccountId: fromId, toAccountId: toId, amount, description });
       set({ actionLoading: false });
+      await get().fetchAll();
+    } catch (err: any) {
+      set({ error: err.message, actionLoading: false });
+      throw err;
+    }
+  },
+
+  // ========== RECURRENCE MANAGEMENT ==========
+  getRecurrenceChildren: async (parentId) => {
+    const children = await transactionsApi.getChildren(parentId);
+    return children;
+  },
+
+  toggleRecurrencePause: async (id, paused) => {
+    try {
+      set({ actionLoading: true });
+      const updated = await transactionsApi.togglePause(id, paused);
+      set({
+        transactions: get().transactions.map((t) => (t.id === id ? updated : t)),
+        actionLoading: false,
+      });
+    } catch (err: any) {
+      set({ error: err.message, actionLoading: false });
+      throw err;
+    }
+  },
+
+  deleteRecurrenceWithHistory: async (id) => {
+    try {
+      set({ actionLoading: true });
+      await transactionsApi.deleteRecurrence(id);
+      // Remove parent + children do state local
+      set({
+        transactions: get().transactions.filter(
+          (t) => t.id !== id && t.recurrenceGroupId !== id,
+        ),
+        actionLoading: false,
+      });
       await get().fetchAll();
     } catch (err: any) {
       set({ error: err.message, actionLoading: false });
