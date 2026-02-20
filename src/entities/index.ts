@@ -11,7 +11,7 @@ export interface Account {
   id: string;
   user_id: string;
   name: string;
-  type: 'wallet' | 'checking' | 'digital' | 'investment';
+  type: "wallet" | "checking" | "digital" | "investment";
   balance: number;
   color: string;
   created_at: Date;
@@ -23,7 +23,7 @@ export interface Category {
   user_id: string;
   name: string;
   icon: string;
-  type: 'income' | 'expense';
+  type: "income" | "expense";
   created_at: Date;
 }
 
@@ -35,10 +35,10 @@ export interface Transaction {
   credit_card_id: string | null;
   description: string;
   amount: number;
-  type: 'income' | 'expense';
+  type: "income" | "expense";
   date: string;
   recurring: boolean;
-  recurrence: 'daily' | 'weekly' | 'monthly' | 'yearly' | null;
+  recurrence: "daily" | "weekly" | "monthly" | "yearly" | null;
   next_due_date: string | null;
   recurrence_count: number | null;
   recurrence_current: number;
@@ -88,6 +88,7 @@ export interface CreditCard {
   card_limit: number;
   closing_day: number;
   due_day: number;
+  best_purchase_day: number | null;
   color: string;
   created_at: Date;
   updated_at: Date;
@@ -179,6 +180,7 @@ export interface CreditCardDTO {
   limit: number;
   closingDay: number;
   dueDay: number;
+  bestPurchaseDay: number;
   color: string;
   usedAmount: number;
   availableLimit: number;

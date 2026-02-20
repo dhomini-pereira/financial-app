@@ -186,6 +186,17 @@ CREATE TABLE IF NOT EXISTS credit_cards (
 
 CREATE INDEX IF NOT EXISTS idx_credit_cards_user ON credit_cards(user_id);
 
+-- Melhor dia de compra (calculado a partir do fechamento, mas editável pelo usuário)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'credit_cards' AND column_name = 'best_purchase_day'
+  ) THEN
+    ALTER TABLE credit_cards ADD COLUMN best_purchase_day INTEGER DEFAULT NULL;
+  END IF;
+END $$;
+
 -- Coluna para vincular transação a um cartão de crédito (opcional)
 DO $$
 BEGIN
