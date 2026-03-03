@@ -144,13 +144,28 @@ export class CreditCardRepository {
     invoiceId: string,
     userId: string,
     accountId: string,
+    paidAmount: number,
     client?: any,
   ): Promise<CreditCardInvoice | null> {
     const db = client || this.pool;
     const { rows } = await db.query(
-      `UPDATE credit_card_invoices SET paid = true, paid_at = NOW(), paid_with_account_id = $1
-       WHERE id = $2 AND user_id = $3 RETURNING *`,
-      [accountId, invoiceId, userId],
+      `UPDATE credit_card_invoices SET paid = true, paid_at = NOW(), paid_with_account_id = $1, paid_amount = $2
+       WHERE id = $3 AND user_id = $4 RETURNING *`,
+      [accountId, paidAmount, invoiceId, userId],
+    );
+    return rows[0] ?? null;
+  }
+
+  async unpayInvoice(
+    invoiceId: string,
+    userId: string,
+    client?: any,
+  ): Promise<CreditCardInvoice | null> {
+    const db = client || this.pool;
+    const { rows } = await db.query(
+      `UPDATE credit_card_invoices SET paid = false, paid_at = NULL, paid_with_account_id = NULL, paid_amount = 0
+       WHERE id = $1 AND user_id = $2 RETURNING *`,
+      [invoiceId, userId],
     );
     return rows[0] ?? null;
   }

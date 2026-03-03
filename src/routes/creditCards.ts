@@ -66,4 +66,14 @@ export async function creditCardRoutes(app: FastifyInstance) {
       return reply.status(err.statusCode || 500).send({ message: err.message });
     }
   });
+
+  app.post('/credit-cards/invoices/:invoiceId/unpay', async (request, reply) => {
+    const { invoiceId } = request.params as any;
+    try {
+      const invoice = await service.unpayInvoice(invoiceId, request.userId);
+      return reply.send(invoice);
+    } catch (err: any) {
+      return reply.status(err.statusCode || 500).send({ message: err.message });
+    }
+  });
 }

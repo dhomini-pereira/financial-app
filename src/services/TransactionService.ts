@@ -48,6 +48,7 @@ export class TransactionService {
       recurrencePaused: t.recurrence_paused ?? false,
       installments: t.installments != null ? Number(t.installments) : null,
       installmentCurrent: t.installment_current != null ? Number(t.installment_current) : null,
+      familyMemberId: t.family_member_id ?? null,
     };
   }
 
@@ -62,6 +63,7 @@ export class TransactionService {
     recurrenceCount?: number | null;
     creditCardId?: string | null;
     installments?: number | null;
+    familyMemberId?: string | null;
   }): Promise<TransactionDTO> {
     const client = await this.pool.connect();
     try {
@@ -89,6 +91,7 @@ export class TransactionService {
         recurrence_group_id: null,
         installments: useCreditCard ? (data.installments ?? null) : null,
         installment_current: useCreditCard && data.installments ? 1 : null,
+        family_member_id: data.familyMemberId ?? null,
       }, client);
 
       if (useCreditCard) {
@@ -129,6 +132,7 @@ export class TransactionService {
     recurring: boolean; recurrence: string | null;
     nextDueDate: string | null; creditCardId: string | null;
     installments: number | null; installmentCurrent: number | null;
+    familyMemberId: string | null;
   }>): Promise<TransactionDTO> {
     const current = await this.txRepo.findById(id, userId);
     if (!current) throw { statusCode: 404, message: 'Transação não encontrada.' };
@@ -146,6 +150,7 @@ export class TransactionService {
     if (data.creditCardId !== undefined) mapped.credit_card_id = data.creditCardId;
     if (data.installments !== undefined) mapped.installments = data.installments;
     if (data.installmentCurrent !== undefined) mapped.installment_current = data.installmentCurrent;
+    if (data.familyMemberId !== undefined) mapped.family_member_id = data.familyMemberId;
 
     const client = await this.pool.connect();
     try {

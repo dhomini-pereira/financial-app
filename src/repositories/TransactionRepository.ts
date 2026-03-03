@@ -40,14 +40,15 @@ export class TransactionRepository {
       recurrence_group_id?: string | null;
       installments?: number | null;
       installment_current?: number | null;
+      family_member_id?: string | null;
     },
     client?: any
   ): Promise<Transaction> {
     const db = client || this.pool;
     const { rows } = await db.query(
-      `INSERT INTO transactions (user_id, account_id, category_id, credit_card_id, description, amount, type, date, recurring, recurrence, next_due_date, recurrence_count, recurrence_current, recurrence_group_id, installments, installment_current)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING *`,
-      [userId, data.account_id, data.category_id, data.credit_card_id ?? null, data.description, data.amount, data.type, data.date, data.recurring, data.recurrence ?? null, data.next_due_date ?? null, data.recurrence_count ?? null, data.recurrence_current ?? 0, data.recurrence_group_id ?? null, data.installments ?? null, data.installment_current ?? null]
+      `INSERT INTO transactions (user_id, account_id, category_id, credit_card_id, description, amount, type, date, recurring, recurrence, next_due_date, recurrence_count, recurrence_current, recurrence_group_id, installments, installment_current, family_member_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) RETURNING *`,
+      [userId, data.account_id, data.category_id, data.credit_card_id ?? null, data.description, data.amount, data.type, data.date, data.recurring, data.recurrence ?? null, data.next_due_date ?? null, data.recurrence_count ?? null, data.recurrence_current ?? 0, data.recurrence_group_id ?? null, data.installments ?? null, data.installment_current ?? null, data.family_member_id ?? null]
     );
     return rows[0];
   }
@@ -58,6 +59,7 @@ export class TransactionRepository {
     recurring: boolean; recurrence: string | null;
     next_due_date: string | null; recurrence_paused: boolean;
     installments: number | null; installment_current: number | null;
+    family_member_id: string | null;
   }>, client?: any): Promise<Transaction | null> {
     const db = client || this.pool;
     const fields: string[] = [];

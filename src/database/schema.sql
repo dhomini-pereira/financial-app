@@ -247,3 +247,47 @@ CREATE TABLE IF NOT EXISTS credit_card_invoices (
 
 CREATE INDEX IF NOT EXISTS idx_invoices_card ON credit_card_invoices(credit_card_id);
 CREATE INDEX IF NOT EXISTS idx_invoices_user ON credit_card_invoices(user_id);
+
+-- Coluna paid_amount para registrar valor no momento do pagamento (para unpay correto)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'credit_card_invoices' AND column_name = 'paid_amount'
+  ) THEN
+    ALTER TABLE credit_card_invoices ADD COLUMN paid_amount DECIMAL(15,2) DEFAULT 0;
+  END IF;
+END $$;
+
+-- Family Members
+CREATE TABLE IF NOT EXISTS family_members (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name VARCHAR(255) NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_family_members_user ON family_members(user_id);
+
+-- Coluna family_member_id nas transações
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'transactions' AND column_name = 'family_member_id'
+  ) THEN
+    ALTER TABLE transactions ADD COLUMN family_member_id UUID REFERENCES family_members(id) ON DELETE SET NULL;
+  END IF;
+END $$;
+
+-- Shared Accounts (somente leitura)
+CREATE TABLE IF NOT EXISTS shared_accounts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  owner_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  shared_with_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(shared_with_user_id, account_id)
+);
+CREATE INDEX IF NOT EXISTS idx_shared_accounts_owner ON shared_accounts(owner_id);
+CREATE INDEX IF NOT EXISTS idx_shared_accounts_shared ON shared_accounts(shared_with_user_id);

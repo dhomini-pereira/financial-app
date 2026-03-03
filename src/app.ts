@@ -10,6 +10,9 @@ import { goalRoutes } from './routes/goals';
 import { cronRoutes } from './routes/cron';
 import { pushTokenRoutes } from './routes/pushTokens';
 import { creditCardRoutes } from './routes/creditCards';
+import { familyMemberRoutes } from './routes/familyMembers';
+import { sharedAccountRoutes } from './routes/sharedAccounts';
+import { insightsRoutes } from './routes/insights';
 
 export async function buildApp() {
   const app = Fastify({
@@ -30,6 +33,9 @@ export async function buildApp() {
   await app.register(cronRoutes);
   await app.register(pushTokenRoutes);
   await app.register(creditCardRoutes);
+  await app.register(familyMemberRoutes);
+  await app.register(sharedAccountRoutes);
+  await app.register(insightsRoutes);
 
   app.get('/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }));
 

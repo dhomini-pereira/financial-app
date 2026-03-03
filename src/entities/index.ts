@@ -46,6 +46,7 @@ export interface Transaction {
   recurrence_paused: boolean;
   installments: number | null;
   installment_current: number | null;
+  family_member_id: string | null;
   created_at: Date;
 }
 
@@ -103,6 +104,23 @@ export interface CreditCardInvoice {
   paid: boolean;
   paid_at: Date | null;
   paid_with_account_id: string | null;
+  paid_amount: number;
+  created_at: Date;
+}
+
+export interface FamilyMember {
+  id: string;
+  user_id: string;
+  name: string;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface SharedAccount {
+  id: string;
+  owner_id: string;
+  shared_with_user_id: string;
+  account_id: string;
   created_at: Date;
 }
 
@@ -153,6 +171,7 @@ export interface TransactionDTO {
   recurrencePaused: boolean;
   installments: number | null;
   installmentCurrent: number | null;
+  familyMemberId: string | null;
 }
 
 export interface InvestmentDTO {
@@ -194,4 +213,28 @@ export interface CreditCardInvoiceDTO {
   paid: boolean;
   paidAt: string | null;
   paidWithAccountId: string | null;
+  paidAmount: number;
+}
+
+export interface FamilyMemberDTO {
+  id: string;
+  name: string;
+}
+
+export interface SharedAccountDTO {
+  id: string;
+  ownerId: string;
+  sharedWithUserId: string;
+  sharedWithUserName: string;
+  sharedWithUserEmail: string;
+  accountId: string;
+  accountName: string;
+}
+
+export interface InsightsDTO {
+  upcomingRecurring: { description: string; amount: number; type: string; nextDueDate: string; recurrence: string }[];
+  last12MonthsExpenses: { month: string; total: number }[];
+  last12MonthsIncome: { month: string; total: number }[];
+  averageMonthlyExpense: number;
+  averageMonthlyIncome: number;
 }

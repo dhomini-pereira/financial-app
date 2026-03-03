@@ -11,6 +11,8 @@ import { InvestmentRepository } from './repositories/InvestmentRepository';
 import { GoalRepository } from './repositories/GoalRepository';
 import { RefreshTokenRepository } from './repositories/RefreshTokenRepository';
 import { CreditCardRepository } from './repositories/CreditCardRepository';
+import { FamilyMemberRepository } from './repositories/FamilyMemberRepository';
+import { SharedAccountRepository } from './repositories/SharedAccountRepository';
 
 import { AuthService } from './services/AuthService';
 import { AccountService } from './services/AccountService';
@@ -30,6 +32,8 @@ container.register('InvestmentRepository', { useClass: InvestmentRepository });
 container.register('GoalRepository', { useClass: GoalRepository });
 container.register('RefreshTokenRepository', { useClass: RefreshTokenRepository });
 container.register('CreditCardRepository', { useClass: CreditCardRepository });
+container.register('FamilyMemberRepository', { useClass: FamilyMemberRepository });
+container.register('SharedAccountRepository', { useClass: SharedAccountRepository });
 
 container.register('AuthService', { useClass: AuthService });
 container.register('AccountService', { useClass: AccountService });
